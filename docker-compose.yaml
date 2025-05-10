@@ -1,0 +1,39 @@
+services:
+
+##################### LANGGRAPH #####################
+  plebchat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: plebchat_langserver
+
+    # volumes:
+    #   - ${PWD}/src:/app/src
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+
+    ports:
+      - "9000:9000"
+
+    restart: unless-stopped
+
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+      
+    # Set resource limits to prevent container from using too much resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1.0'
+    #       memory: 1G
+    #     reservations:
+    #       cpus: '0.25'
+    #       memory: 512M
