@@ -62,7 +62,9 @@ class Pipeline:
         DISABLE_COMMANDS: bool = Field(False, description="Whether to disable commands (i.e. starts with '/')")
         PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
         OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434", description="Ollama server URL")
-        DEBUG: bool = Field(default=False, description='run pipe in debug mode?')
+        SEARXNG_URL: str = Field(default="http://searxng:8080", description="SearXNG API URL")
+        #TODO: change to False in prod
+        DEBUG: bool = Field(default=True, description='run pipe in debug mode?')
 
 
     def __init__(self):
@@ -162,7 +164,7 @@ class Pipeline:
                 json=data,
                 headers=headers,
                 stream=True,
-                timeout=5.0  # 5 seconds timeout for connection attempt
+                timeout=10.0  # 5 seconds timeout for connection attempt
             )
             response.raise_for_status()
             return response.iter_lines()

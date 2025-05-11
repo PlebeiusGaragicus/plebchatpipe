@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from langchain_core.runnables import RunnableConfig
 
 
-
+#NOTE: This has to mirror the Valve class inside plebchat_pipeline.py
 class Config(BaseModel):
     """The configurable fields for the graph."""
     LLM_MODEL: str = Field(default="llama3.1:8")
@@ -13,6 +13,7 @@ class Config(BaseModel):
     DISABLE_COMMANDS: bool = Field(default=False)
     PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000")
     OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434")
+    SEARXNG_URL: str = Field(default="http://searxng:8080")
     DEBUG: bool = Field(default=False)
 
     ##############################################################
