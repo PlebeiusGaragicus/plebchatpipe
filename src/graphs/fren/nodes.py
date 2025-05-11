@@ -1,10 +1,12 @@
+import json
+
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import HumanMessage
 from langchain_ollama import ChatOllama
 
 from langgraph.types import StreamWriter
 
-from .state import State, Config
+from .state import State, Config, SYSTEM_PROMPT
 from .commands import CommandHandler
 
 from ..common import OLLAMA_HOST
@@ -15,8 +17,11 @@ from ..common import OLLAMA_HOST
 def get_llm(config: RunnableConfig):
     configurable = Config.from_runnable_config(config)
     return ChatOllama(
-        model="llama3.1:8b",
-        keep_alive=configurable.keep_alive,
+        model=configurable.LLM_MODEL,
+        # model="llama3.1:8b",
+        # model="phi4-mini:3.8b-q8_0",
+        # model="qwen3:4b-q8_0",
+        keep_alive=-1,
         # temperature=configurable.temperature / 100,
         base_url=OLLAMA_HOST,
     )
@@ -32,7 +37,7 @@ def _check_for_command(state: State, config: RunnableConfig):
         This function is prefixed with a '_' so that it's progress doesn't show in the frontend UI
     """
     query = state.messages[-1]['content']
-    print(query)
+    # print(query)
     if query.startswith("/"):
         return "handle_command"
     return "ollama"
@@ -51,6 +56,9 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     # Remove the slash and take the first word
     command = split[0][1:].lower()
     arguments = split[1:]
+
+    print("%"*20)
+    print(f"DEBUG: {command}, {arguments}")
 
     # check if command is empty
     if not command:
@@ -71,24 +79,73 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 # NODE
 ############################################################################
 def ollama(state: State, config: RunnableConfig):
-    # llm = get_llm(config)
-    # configurable = Config.from_runnable_config(config)
-    
-    llm = ChatOllama(
-        model="llama3.1:8b",
-        keep_alive=-1,
-        # temperature=configurable.temperature / 100,
-        base_url=OLLAMA_HOST,
-        stream=True
-    )
 
+
+    llm = get_llm(config)
+    configurable = Config.from_runnable_config(config)
+
+    # If we have a new user query, add it to the messages
+    if state.query:
+        # Add the user's query to the message history
+        user_message = {"role": "user", "content": state.query}
+        # Ensure we're not duplicating the message if it's already in the state
+        if not state.messages or state.messages[-1] != user_message:
+            state.messages.append(user_message)
+
+    # Add system prompt to messages if it's not already there
+    # Check if the first message is a system message
+    if not state.messages or state.messages[0].get("role") != "system":
+        # Prepend system prompt to messages
+        state.messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state.messages
+
+
+
+    print("*"*30)
+    print("GRAPH STATE INSIDE THE NODE")
+    for m in state.messages:
+        print(json.dumps(m, indent=2))
+    print("*"*30)
+
+    # Call the LLM with the full conversation history
     response = llm.stream(state.messages)
-    
+
     # Join all chunks into a single response
     full_response = "".join(chunk.content for chunk in response)
+
     # Add the assistant's response to the message history
     assistant_message = {"role": "assistant", "content": full_response}
     state.messages.append(assistant_message)
-    
+
+    print('='*40)
+    print("THE ASSISTANT SAID..")
+    print(assistant_message)
+    print('='*40)
+
     # Return the updated messages list with the new response
     return {"messages": [assistant_message]}
+
+
+
+
+# def ollama(state: State, config: RunnableConfig):
+#     # llm = get_llm(config)
+#     # configurable = Config.from_runnable_config(config)
+    
+#     llm = ChatOllama(
+#         model="llama3.1:8b",
+#         keep_alive=-1,
+#         # temperature=configurable.temperature / 100,
+#         base_url=OLLAMA_HOST,
+#         stream=True
+#     )
+
+#     response = llm.stream(state.messages)
+    
+#     # Join all chunks into a single response
+#     full_response = "".join(chunk.content for chunk in response)
+#     # Add the assistant's response to the message history
+#     assistant_message = {"role": "assistant", "content": full_response}
+#     state.messages.append(assistant_message)
+    
+#     # Return the updated messages list with the new response
+#     return {"messages": [assistant_message]}

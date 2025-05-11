@@ -3,29 +3,38 @@ import asyncio
 import operator
 import traceback
 from pydantic import BaseModel, Field
-from typing import Annotated
+from typing import Annotated, List, Dict, Any, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from fastapi.responses import StreamingResponse
 
 from graphs.common import OLLAMA_HOST
 from helpers import content_tokens, newlines, thinking_tokens, thinking_newline, emit_event
 
 
-class State(BaseModel):
-    messages: Annotated[list, operator.add] = Field(default_factory=list)
+# Define Pydantic models for request validation
+class Message(BaseModel):
+    role: str
+    content: str
+
+class GraphRequest(BaseModel):
+    messages: List[dict]
+    config: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    query: Optional[str] = None
 
 
 
 app = FastAPI(
     title="PlebChat Agents API",
     description="A collection of agents, implemented with LangGraph",
-    )
+)
+
 
 @app.get("/health")
 def health_check():
     """Health check endpoint for Docker healthcheck"""
     return {"status": "healthy"}
+
 
 @app.get("/graphs")
 async def get_graphs():
@@ -59,9 +68,33 @@ async def get_models():
 
 
 @app.post("/graph/{graph_id}")
-async def stream(graph_id: str, messages: State):
-    from graphs import graph_registry
+async def stream(graph_id: str, request: GraphRequest):
+
+    print("*"*30)
+    print("POST REQUEST TO THE GRAPH ENDPOINT")
+    print("*"*30)
     
+    # Detect if this is a tool selection call or a regular chat call
+    is_tool_selection = False
+    if request.messages and len(request.messages) >= 2:
+        if request.messages[0].get('role') == 'system' and 'Available Tools' in request.messages[0].get('content', ''):
+            is_tool_selection = True
+    
+    print(f"REQUEST TYPE: {'TOOL SELECTION' if is_tool_selection else 'REGULAR CHAT'}")
+    print("*"*30)
+    
+    print(f"MESSAGES:")
+    for m in request.messages:
+        print(json.dumps(m, indent=2))
+    print(f"CONFIG:")
+    print(json.dumps(request.config, indent=2))
+    if request.query:
+        print(f"Query: {request.query}")
+    print("*"*30)
+
+
+    from graphs import graph_registry
+
     # Check if the requested graph exists
     if graph_id not in graph_registry:
         return {"error": f"Graph with ID '{graph_id}' not found"}
@@ -70,7 +103,6 @@ async def stream(graph_id: str, messages: State):
     agent = graph_registry[graph_id]
 
     async def event_stream():
-        print("DEBUG: Starting event stream")
         # Start the stream with an empty delta to initialize the connection
         stream_start_msg = {
             'choices': [
@@ -84,21 +116,22 @@ async def stream(graph_id: str, messages: State):
         # await asyncio.sleep(0)  # Force flush
 
         yield emit_event("Running...", False)
-        print("DEBUG: Emitted initial running event")
         await asyncio.sleep(0)  # Force flush
 
         current_node = None
-        config = {}
         
         try:
-            print(f"DEBUG: Starting agent.stream with graph_id={graph_id}")
-            for event, data in agent.stream(input=messages, config=config, stream_mode=["messages", "custom"]):
-                print(f"DEBUG: Received event: {event}")
+            # Format input according to the State model structure
+            input_state = {
+                "messages": request.messages,
+                "query": request.query
+            }
+            
+            for event, data in agent.stream(input=input_state, config=request.config, stream_mode=["messages", "custom"]):
 
                 if event == "custom":
                     content_type = data['type']
                     msg = data['content']
-                    # print(f"DEBUG: Custom event with type={content_type}, content={msg[:50]}..." if len(msg) > 50 else f"DEBUG: Custom event with type={content_type}, content={msg}")
 
                     if content_type == "thought":
                         yield f"data: {json.dumps(thinking_newline())}\n\n"
@@ -110,7 +143,6 @@ async def stream(graph_id: str, messages: State):
                 if event == "messages":
                     reply_content = data[0]
                     metadata = data[1]
-                    print(f"DEBUG: Messages event with node={metadata.get('langgraph_node', 'unknown')}")
 
                     # Handle node change
                     if current_node != metadata["langgraph_node"]:
@@ -121,9 +153,7 @@ async def stream(graph_id: str, messages: State):
                         await asyncio.sleep(0)  # Force flush
 
                     if hasattr(reply_content, 'content') and reply_content.content:
-                        content = reply_content.content
-                        # print(f"DEBUG: Content from {metadata.get('langgraph_node', 'unknown')}: {content[:50]}..." if len(content) > 50 else f"DEBUG: Content from {metadata.get('langgraph_node', 'unknown')}: {content}")
-                        print(content)
+                        # print(reply_content.content) #  show tokens as they stream
 
                         if 'node_output_type' in metadata and metadata['node_output_type'] == "thought":
                             content_msg = thinking_tokens(reply_content.content)
@@ -133,15 +163,8 @@ async def stream(graph_id: str, messages: State):
                         yield f"data: {json.dumps(content_msg)}\n\n"
                         await asyncio.sleep(0)
 
-
-            # Debug log after the for loop ends
-            print("DEBUG: Exited the event loop - all events processed")
-            
             # yield emit_event("Completed", True)
             yield emit_event("", True)
-
-            # Add debug output to indicate we're ending the stream
-            print("DEBUG: Ending stream normally")
             
             # End of the stream - moved outside the for loop
             stream_end_msg = {
@@ -159,7 +182,6 @@ async def stream(graph_id: str, messages: State):
             # Capture the error and send it to the frontend
             error_msg = str(e)
             stack_trace = traceback.format_exc()
-            print(f"ERROR in graph execution: {error_msg}\n{stack_trace}")
 
             # Send the error as a content message to the frontend
             error_content = f"⚠️ Error in graph execution: {error_msg}"
@@ -181,8 +203,6 @@ async def stream(graph_id: str, messages: State):
             }
             yield f"data: {json.dumps(error_end_msg)}\n\n"
             yield emit_event("Graph error!", True)
-
-
 
 
     return StreamingResponse(

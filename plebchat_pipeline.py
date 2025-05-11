@@ -39,7 +39,6 @@ def error_generator(e, server_url):
             },
         }
     }
-
     # Yield a simple error message with the actual exception text
     yield f"Connection to server failed: `{type(e).__name__}`\n"
     yield f"```\n{str(e)}\n```\n"
@@ -71,23 +70,23 @@ class Pipeline:
         print(f"PIPE: on_startup: {__name__}")
         pass
 
-    async def on_shutdown(self): 
+    async def on_shutdown(self):
         print(f"PIPE: on_shutdown: {__name__}")
         pass
 
     async def on_valves_updated(self):
         self.set_pipelines()
+        pass
 
-    async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
-        # if self.valves.debug:
-        #     print(f"[DEBUG] Received request: {json.dumps(body, indent=2)}")
+    # async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
+    #     # if self.valves.debug:
+    #     #     print(f"[DEBUG] Received request: {json.dumps(body, indent=2)}")
 
-        metadata = body.get("metadata", {})
-        chat_id = metadata.get("chat_id", str(uuid.uuid4()))
-        metadata["chat_id"] = chat_id
-        body["metadata"] = metadata
-
-        return body
+    #     metadata = body.get("metadata", {})
+    #     chat_id = metadata.get("chat_id", str(uuid.uuid4()))
+    #     metadata["chat_id"] = chat_id
+    #     body["metadata"] = metadata
+    #     return body
 
     def set_pipelines(self):
         #TODO: This fails (and ultimately the pipeline cannot be loaded into OUI) if the fkn server isn't running!! THAT SUCKS!
@@ -116,14 +115,14 @@ class Pipeline:
         body: dict
             ) -> Union[str, Generator, Iterator]:
 
-        print("*"*30)
+        # print("*"*30)
         # print(f"chat_id: {self.chat_id}")
         # print("*"*30)
         # print(f"message_id: {self.message_id}")
-        print("*"*30)
-        print(user_message)
-        print("*"*30)
-        print(model_id)
+        # print("*"*30)
+        # print(user_message)
+        # print("*"*30)
+        # print(model_id)
         print("*"*30)
         print(body)
         print("*"*30)
@@ -131,9 +130,12 @@ class Pipeline:
         print(json.dumps(messages, indent=2))
         print("*"*30)
 
-        # Format messages as a list of dictionaries with 'role' and 'content' keys
+        valve_config = self.valves.model_dump()
+
         data = {
+            "query": user_message,  # Include the original user query
             "messages": messages,
+            "config": valve_config  # Include all valve settings as config
             }
 
         headers = {

@@ -12,5 +12,9 @@ langchain_openai
 # Type hints and extensions
 typing-extensions>=4.8.0
 
+readability-lxml
+requests
+html2text
+
 # Development and hot-reloading
 watchfiles>=0.20.0

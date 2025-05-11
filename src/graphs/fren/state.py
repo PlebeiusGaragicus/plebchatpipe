@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 class State(BaseModel):
     messages: Annotated[list, operator.add] = Field(default_factory=list)
+    query: Optional[str] = None
 
 
 
@@ -64,15 +65,8 @@ from ..common import KeepAlive
 class Config(BaseModel):
     """The configurable fields for the graph."""
 
-    # model: LLMModelsAvailable = Field(DEFAULT_LOCAL_MODEL)
+    LLM_MODEL: str = Field("llama3.1:8b", description="The Ollama LLM model to use.")
 
-
-    temperature: int = Field(
-        50,
-        ge=0,
-        le=100,
-        description="Temperature for the model"
-    )
     keep_alive: KeepAlive = Field(
         KeepAlive.FIVE_MINUTES,
         description="How long to keep the model in memory"
@@ -81,11 +75,7 @@ class Config(BaseModel):
         False,
         description="Whether to disable commands (i.e. starts with '/')"
     )
-    system_prompt: str = Field(
-        SYSTEM_PROMPT,
-        format="multi-line",
-        description="What do you want to research?"
-    )
+
 
     ##############################################################
     @classmethod
