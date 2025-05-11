@@ -9,7 +9,7 @@ from langgraph.graph.state import StateGraph
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import StreamWriter
 
-from ..common import write_content
+from ..common import write_content, write_thoughts
 
 
 class State(BaseModel):
@@ -39,7 +39,10 @@ class Config(BaseModel):
 
 #NOTE: since we aren't using an LLM to generate tokens, we need to use the writer to print to the UI
 def echo(state: State, config: RunnableConfig, writer: StreamWriter):
-    writer( write_content( state.messages[-1]['content'] ) )
+    writer( write_thoughts( "Geesh... this guy's an idiot amirite?" ) )
+
+    echoback = state.messages[-1]['content']
+    writer( write_content( echoback ) )
 
 
 

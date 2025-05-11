@@ -240,6 +240,7 @@ async def stream(graph_id: str, messages: State):
                 if event == "custom":
                     content_type = data['type']
                     msg = data['content']
+                    print(msg)
 
                     if content_type == "thought":
                         yield f"data: {json.dumps(thinking_newline())}\n\n"
@@ -247,12 +248,12 @@ async def stream(graph_id: str, messages: State):
 
                     else:
                         # title = data['title']
-                        yield f"data: {json.dumps(newlines())}\n\n"
                         #TODO: only write node name if in DEBUG mode
                         # yield f"data: {json.dumps(content_tokens('---'))}\n\n"
                         # yield f"data: {json.dumps(newlines())}\n\n"
                         # yield f"data: {json.dumps( content_tokens( f'## {title}') )}\n\n"
                         # yield f"data: {json.dumps(newlines())}\n\n"
+                        yield f"data: {json.dumps(newlines())}\n\n"
                         yield f"data: {json.dumps( content_tokens( msg ) )}\n\n"
 
                 if event == "messages":
@@ -264,7 +265,10 @@ async def stream(graph_id: str, messages: State):
                     if current_node != metadata["langgraph_node"]:
                         current_node = metadata["langgraph_node"]
                         print(f"node: {current_node}")
-                        
+                        nice_node_name = current_node.replace('_', ' ')
+                        yield emit_event(f"Running... {nice_node_name}", False)
+                        await asyncio.sleep(0)  # Force flush
+
                         # Output the node name as a header based on node type
                         if 'node_output_type' in metadata and metadata['node_output_type'] == "thought":
                             # For thought nodes, use thinking_tokens for the header
