@@ -64,17 +64,8 @@ from ..common import KeepAlive
 
 class Config(BaseModel):
     """The configurable fields for the graph."""
-
     LLM_MODEL: str = Field("llama3.1:8b", description="The Ollama LLM model to use.")
 
-    keep_alive: KeepAlive = Field(
-        KeepAlive.FIVE_MINUTES,
-        description="How long to keep the model in memory"
-    )
-    disable_commands: bool = Field(
-        False,
-        description="Whether to disable commands (i.e. starts with '/')"
-    )
 
 
     ##############################################################

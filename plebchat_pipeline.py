@@ -11,6 +11,14 @@ licence: MIT
 """
 
 
+################################################
+DEFAULT_OLLAMA_MODEL = "llama3.1:8"
+
+
+
+################################################
+
+
 import json
 import uuid
 import requests
@@ -45,13 +53,16 @@ def error_generator(e, server_url):
     yield f"Please check if the server at {server_url} is running."
 
 
+#TODO: how can we dynamically create a Literal type at runtime?  We can populate it with models Ollama has downloaded
+#TODO: The description field doesn't show up in OUI...
 class Pipeline:
     class Valves(BaseModel):
-        debug: bool = Field(default=False, description='run pipe in debug mode?')
-        PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
-        LLM_MODEL: Literal['llama3.1:8b', 'qwen3:4b-q8_0'] = Field(default="llama3.1:8b", description="LLM model to use")
-        #TODO: can we build a dynamic Literal type at runtime?  This way the available Ollama models can be listed.
+        LLM_MODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
+        KEEP_ALIVE: Literal[-1, 0, 5] = Field(5, description="How long to keep the model in memory")
 
+        DISABLE_COMMANDS: bool = Field(False, description="Whether to disable commands (i.e. starts with '/')")
+        PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
+        DEBUG: bool = Field(default=False, description='run pipe in debug mode?')
 
 
     def __init__(self):
@@ -99,7 +110,7 @@ class Pipeline:
             # Update pipelines with models from server if available
             if server_models and isinstance(server_models, list):
                 self.pipelines = server_models
-                if self.valves.debug:
+                if self.valves.DEBUG:
                     print(f"[DEBUG] Models loaded from server: {json.dumps(server_models, indent=2)}")
         except Exception as e:
             print(f"[WARNING] Failed to fetch models from server: {str(e)}")
