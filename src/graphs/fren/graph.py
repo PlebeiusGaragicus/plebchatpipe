@@ -1,9 +1,11 @@
 """This 'ollama' graph outlines a LangGraph agent with memory functionality."""
 
-from langgraph.graph.state import StateGraph
 
 ## DEFINE OUR GRAPH, ALONG WITH ITS SCHEMAS
-from .state import State, Config
+from langgraph.graph.state import StateGraph
+
+from ..config import Config
+from .state import State
 graph_builder = StateGraph(State, input=State, config_schema=Config)
 
 

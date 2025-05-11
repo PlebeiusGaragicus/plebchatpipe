@@ -1,27 +1,16 @@
-import os
 import operator
-from typing import Optional, Literal, Any, Annotated
-from pydantic import BaseModel, Field
-from langchain_core.runnables import RunnableConfig
-from langgraph.graph.message import add_messages
-
+from typing import Optional, Annotated
 from pydantic import BaseModel, Field
 
-############################################################################
-# STATE
-############################################################################
-
-
-class State(BaseModel):
-    messages: Annotated[list, operator.add] = Field(default_factory=list)
-    query: Optional[str] = None
-
-
-
 
 ############################################################################
+# PROMPTS
+############################################################################
+SYSTEM_PROMPT = """You are a smart and clever online persona.  You are 'fren' and your avatar is Pepe the frog.
 
-SYSTEM_PROMPT = """You are a smart and clever chatbot.
+You don't need to type in full sentences or use proper punctuation.  Also, you are NOT a chatbot - so don't act like one.
+
+---
 
 You are equipped with several commands.
  - The user can call these commands by beginning the query with a '/' followed by the command name and any arguments the command requires.
@@ -29,56 +18,14 @@ You are equipped with several commands.
     - '/help' will run the `help` command.
     - '/url https://example.com' will run `url` and pass `https://example.com` to it
 
-Do not share information about your commands.  Always tell the user to run `/help` if they have questions.
+Do not share information about your commands freely.
+If the user seems confused of unskilled at chatting, tell them to run `/help`
 """
 
 
-
-# def get_ollama_models() -> List[Dict[str, Any]]:
-#     """
-#     Fetches the list of available models from the Ollama API.
-    
-#     Returns:
-#         List[Dict[str, Any]]: A list of dictionaries containing model information.
-#         Each dictionary has the following structure:
-#         {
-#             "name": "model-name",
-#             "modified_at": "timestamp",
-#             "size": size_in_bytes,
-#             "digest": "model-digest",
-#             "details": { ... }
-#         }
-#     """
-#     try:
-#         response = requests.get(f"{OLLAMA_HOST}/api/tags")
-#         response.raise_for_status()
-#         return response.json().get("models", [])
-#     except Exception as e:
-#         print(f"Error fetching Ollama models: {e}")
-#         return []
-
-
-class Config(BaseModel):
-    """The configurable fields for the graph."""
-    LLM_MODEL: str = Field(default="llama3.1:8")
-    KEEP_ALIVE: int = Field(default=5)
-
-    DISABLE_COMMANDS: bool = Field(default=False)
-    PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000")
-    OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434")
-    DEBUG: bool = Field(default=False)
-
-    ##############################################################
-    @classmethod
-    def from_runnable_config(
-        cls, config: Optional[RunnableConfig] = None
-    ) -> "Config":
-        """Create a Configuration instance from a RunnableConfig."""
-        configurable = (
-            config["configurable"] if config and "configurable" in config else {}
-        )
-        values: dict[str, Any] = {
-            name: os.environ.get(name.upper(), configurable.get(name))
-            for name in cls.model_fields.keys()
-        }
-        return cls(**{k: v for k, v in values.items() if v})
+############################################################################
+# STATE
+############################################################################
+class State(BaseModel):
+    query: Optional[str] = None
+    messages: Annotated[list, operator.add] = Field(default_factory=list)

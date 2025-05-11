@@ -22,9 +22,8 @@ DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
 import json
 import uuid
 import requests
-from enum import Enum, auto
 from pydantic import BaseModel, Field
-from typing import List, Union, Generator, Iterator, Optional, Literal
+from typing import List, Union, Generator, Iterator, Literal
 
 
 def error_generator(e, server_url):
@@ -53,12 +52,12 @@ def error_generator(e, server_url):
     yield f"Please check if the server at {server_url} is running."
 
 
-#TODO: how can we dynamically create a Literal type at runtime?  We can populate it with models Ollama has downloaded
-#TODO: The description field doesn't show up in OUI...
 class Pipeline:
     class Valves(BaseModel):
+        #TODO: how can we dynamically create a Literal type at runtime?  We can populate it with models Ollama has downloaded
+        #TODO: The description field doesn't show up in OUI...
         LLM_MODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
-        KEEP_ALIVE: Literal[-1, 0, 5] = Field(5, description="How long to keep the model in memory")
+        KEEP_ALIVE: Literal["-1", "0", "5m"] = Field("5m", description="How long to keep the model in memory")
 
         DISABLE_COMMANDS: bool = Field(False, description="Whether to disable commands (i.e. starts with '/')")
         PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")

@@ -6,7 +6,8 @@ from langchain_ollama import ChatOllama
 
 from langgraph.types import StreamWriter
 
-from .state import State, Config, SYSTEM_PROMPT
+from ..config import Config
+from .state import State, SYSTEM_PROMPT
 from .commands import CommandHandler
 
 # from ..common import OLLAMA_HOST

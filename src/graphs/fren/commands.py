@@ -1,9 +1,3 @@
-import os
-import json
-
-import logging
-logger = logging.getLogger(__name__)
-
 from .VERSION import VERSION
 
 
@@ -26,11 +20,12 @@ class CommandHandler:
             # return f"""# ⛓️‍💥\n`/{command}` command not found!\n## Commands available:\n{cls.help()}"""
             return f"""# ⛓️‍💥\n{cls.help()}"""
 
+
 ####################################################################################
     @classmethod
     def help(cls, args: list[str] = None):
         """Get a list of commands.
-        
+
         Usage: /help [command]
         Without arguments, shows a list of all available commands with brief descriptions.
         With a command name, shows detailed help for that specific command.
@@ -47,8 +42,6 @@ class CommandHandler:
 ```
 {doc}
 ```
-
-Type `/help` to see all available commands.
 """
             else:
                 return f"Command '/{command}' not found. Type `/help` to see all available commands."
@@ -129,30 +122,6 @@ Find me on [nostr](https://njump.me/npub1xegedgkkjf24pl4d76cdwhufacng5hapzjnrtgm
 
 
 ####################################################################################
-# KEEP THIS
-    # def usage(self, request, *args):
-    #     """Track your **token usage** for this conversation."""
-
-    #     is_admin = request.body['user']['role'] == 'admin'
-    #     if is_admin:
-    #         return "You're a system administrator - I don't track your usage!\nYou can use me for free!"
-
-    #     lud16 = request.body['user']['email']
-    #     if not lud16:
-    #         return "⚠️ No user LUD16 provided."
-
-    #     thread_id = request.body['chat_id']
-    #     if not thread_id:
-    #         return "⚠️ No thread ID provided."
-
-    #     try:
-    #         from .payment import get_usage
-    #         usage = get_usage(lud16, thread_id)
-    #         return f"User: `{lud16}`\nThread: `{thread_id}`\nYou have used: **`{0 if not usage else usage}`** generation tokens in this conversation."
-    #     except Exception as e:
-    #         return f"Error checking usage: {e}"
-
-####################################################################################
     @classmethod
     def url(cls, args: list[str] = None):
         """Extract and display the main content from a website URL.
@@ -226,40 +195,6 @@ Find me on [nostr](https://njump.me/npub1xegedgkkjf24pl4d76cdwhufacng5hapzjnrtgm
             return f"⚠️ Error processing the webpage content: {str(e)}"
 
 
-# def url(request):
-#     split = request.user_message.split(" ")
-#     first_arg = split[1] if len(split) > 1 else None
-
-#     if not first_arg:
-#         return "⚠️ Please provide a URL.\n\n**Example:**\n```\n/url https://example.com\n```"
-
-#     if first_arg.startswith("http://"):
-#         return f"⚠️ The URL must start with `https://`\n\n**Example:**\n```\n/url https://example.com\n```"
-
-#     if not first_arg.startswith("https://"):
-#         first_arg = f"https://{first_arg}"
-
-#     return f"""
-# This command will scrape the provided url and reply with the "readability" text.
-
-# This way, the contents of the url can be injected into the context of the conversation and can be discussed, summariezed, etc.
-
-# This is a placeholder for the implementation of the url command.
-
-# The URL you provided is: {first_arg}
-# """
-
-
-
-
-# [Click here to view the content of the URL]({first_arg})
-# The content of the URL will be displayed here.
-# #NOTE: providing just the url link like so:
-# # [Click here to view the content of the URL]({first_arg})
-# # will prepend the base url/c/ so that we can link TO CONVERSATIONS!!! WOW!
-
-
-
 ####################################################################################
     @classmethod
     def random(cls, args: list[str] = None):
@@ -295,86 +230,27 @@ Find me on [nostr](https://njump.me/npub1xegedgkkjf24pl4d76cdwhufacng5hapzjnrtgm
             return "Invalid input. Usage: /random [max] - where max is a positive integer."
 
 
-# THIS method gives you the number of digits that you ask for
-    # @classmethod
-    # def random(cls, args: list[str] = None):
-    #     """Generate a random number.
-        
-    #     Usage: /random [digits]
-    #     If no digits are provided, returns a random number between 1-100.
-    #     If digits are provided, returns a random number with that many digits.
-    #     """
-    #     import random
-        
-    #     # Debug output
-    #     print("&"*30)
-    #     print(f"DEBUG random command received args: {args}")
-
-    #     # Handle None or empty list
-    #     if args is None or not args:
-    #         # Default behavior: random number between 1-100
-    #         random_number = random.randint(1, 100)
-    #         return f"Random number (1-100): {random_number}"
-
-    #     # Handle case with arguments
-    #     try:
-    #         digits = int(args[0])
-    #         if digits <= 0:
-    #             return "Please provide a positive number of digits."
-    #         if digits > 10:
-    #             return "For performance reasons, please limit to 10 digits or fewer."
-
-    #         min_val = 10**(digits-1) if digits > 1 else 1
-    #         max_val = (10**digits) - 1
-    #         random_number = random.randint(min_val, max_val)
-    #         return f"Random {digits}-digit number: {random_number}"
-    #     except (ValueError, IndexError):
-    #         return "Invalid input. Usage: /random [digits] - where digits is a positive integer."
 
 ####################################################################################
-    @classmethod
-    def read(cls, args: list[str] = None):
-        return "Not yet implemented"
-#     # TODO: I want to consider charging the user for intensive commands like this...
-#     split = request.user_message.split(" ")
-#     first_arg = split[1] if len(split) > 1 else None
+# KEEP THIS
+    # def usage(self, request, *args):
+    #     """Track your **token usage** for this conversation."""
 
-#     #TODO: modularize this code.  Maybe have a _ensure_proper_url() function that can be reused in other commands.
-#     if not first_arg:
-#         return "⚠️ Please provide a URL.\n\n**Example:**\n```\n/article https://example.com\n```"
+    #     is_admin = request.body['user']['role'] == 'admin'
+    #     if is_admin:
+    #         return "You're a system administrator - I don't track your usage!\nYou can use me for free!"
 
-#     if first_arg.startswith("http://"):
-#         return f"⚠️ The URL must start with `https://`\n\n**Example:**\n```\n/article https://example.com\n```"
+    #     lud16 = request.body['user']['email']
+    #     if not lud16:
+    #         return "⚠️ No user LUD16 provided."
 
-#     if not first_arg.startswith("https://"):
-#         first_arg = f"https://{first_arg}"
+    #     thread_id = request.body['chat_id']
+    #     if not thread_id:
+    #         return "⚠️ No thread ID provided."
 
-#     try:
-#         from readability import Document
-#         # url = "https://tftc.io/home-and-car-insurance-providers-retreating/"
-#         # response = requests.get( url )
-#         response = requests.get( first_arg )
-#         doc = Document(response.content)
-
-#         article_markdown_contents = f""
-
-#         article_markdown_contents += doc.title()
-#         article_markdown_contents += doc.summary()
-#         article_markdown_contents += doc.content()
-
-
-
-#         return f"""
-# This command will scrape the provided url and reply with a summary of the content.
-
-# The URL you provided is: {first_arg}
-
-# Here's the article:
-
-# ---
-
-# {article_markdown_contents}
-# """
-
-#     except Exception as e:
-#         return f"""error in scraping this URL: {e}"""
+    #     try:
+    #         from .payment import get_usage
+    #         usage = get_usage(lud16, thread_id)
+    #         return f"User: `{lud16}`\nThread: `{thread_id}`\nYou have used: **`{0 if not usage else usage}`** generation tokens in this conversation."
+    #     except Exception as e:
+    #         return f"Error checking usage: {e}"

@@ -1,6 +1,5 @@
 import json
 import asyncio
-import operator
 import traceback
 from pydantic import BaseModel, Field
 from typing import Annotated, List, Dict, Any, Optional
@@ -17,9 +16,9 @@ class Message(BaseModel):
     content: str
 
 class GraphRequest(BaseModel):
+    query: Optional[str] = None
     messages: List[dict]
     config: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    query: Optional[str] = None
 
 
 
@@ -42,6 +41,7 @@ async def get_graphs():
 
 OLLAMA_HOST = "http://host.docker.internal:11434"
 
+
 @app.get("/models")
 async def get_models():
     import requests
@@ -51,11 +51,11 @@ async def get_models():
 
         response = requests.get(ollama_url)
         response.raise_for_status()
-        
+
         # Extract the model names from the Ollama response
         ollama_data = response.json()
         models = []
-        
+
         for model in ollama_data['models']:
             if 'embed' not in model['name']: # skip some embedding models
                 models.append( model['name'] )
