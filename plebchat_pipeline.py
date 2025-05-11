@@ -34,14 +34,16 @@ def error_generator(e, server_url):
         "event": {
             "type": "status",
             "data": {
-                "description": "🔴 GRAPH EXECUTION HALTED!",
+                "description": "🚨 GRAPH EXECUTION HALTED!",
                 "done": True,
             },
         }
     }
 
     # Yield a simple error message with the actual exception text
-    yield f"🚨 Connection to server failed!\n{type(e).__name__}: {str(e)}\nPlease check if the server at {server_url} is running."
+    yield f"Connection to server failed: `{type(e).__name__}`\n"
+    yield f"```\n{str(e)}\n```\n"
+    yield f"Please check if the server at {server_url} is running."
 
 
 class Pipeline:
