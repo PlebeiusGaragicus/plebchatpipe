@@ -13,33 +13,11 @@ from pydantic import BaseModel, Field
 # STATE
 ############################################################################
 
-# class State(TypedDict):
-#     messages: Annotated[list, add_messages]
 
 class State(BaseModel):
     messages: Annotated[list, operator.add] = Field(default_factory=list)
 
 
-class Result(BaseModel):
-    reply: str
-    messages: list = Field(default_factory=list)
-
-
-
-
-
-
-
-############################################################################
-# CONFIG
-############################################################################
-
-OLLAMA_HOST = "http://host.docker.internal:11434"
-
-class KeepAlive(str, Enum):
-    NONE = "0"
-    FIVE_MINUTES = "5m"
-    FOREVER = "-1"
 
 
 ############################################################################
@@ -81,7 +59,7 @@ def get_ollama_models() -> List[Dict[str, Any]]:
         return []
     
 
-
+from ..common import KeepAlive
 
 class Config(BaseModel):
     """The configurable fields for the graph."""

@@ -4,8 +4,10 @@ from langchain_ollama import ChatOllama
 
 from langgraph.types import StreamWriter
 
-from .state import State, Config, OLLAMA_HOST
+from .state import State, Config
 from .commands import CommandHandler
+
+from ..common import OLLAMA_HOST
 
 ############################################################################
 # HELPER FUNCTIONS
@@ -13,9 +15,9 @@ from .commands import CommandHandler
 def get_llm(config: RunnableConfig):
     configurable = Config.from_runnable_config(config)
     return ChatOllama(
-        model=configurable.model,
+        model="llama3.1:8b",
         keep_alive=configurable.keep_alive,
-        temperature=configurable.temperature / 100,
+        # temperature=configurable.temperature / 100,
         base_url=OLLAMA_HOST,
     )
 
@@ -33,7 +35,7 @@ def _check_for_command(state: State, config: RunnableConfig):
     print(query)
     if query.startswith("/"):
         return "handle_command"
-    return "thick"
+    return "ollama"
 
 
 ############################################################################
@@ -61,95 +63,11 @@ def handle_command(state: State, config: RunnableConfig):
     return {"messages": [{"role": "assistant", "content": response}]}
 
 
-def write_thoughts(content: str):
-    return {
-        'type': 'thought',
-        'content': content
-    }
-
-def write_content(content: str):
-    return {
-        'type': 'content',
-        'content': content
-    }
-
-
-
-def thick(state: State, config: RunnableConfig, writer: StreamWriter):
-    print("nothing node nothing node nothing node nothing node nothing node")
-
-    thoughts = """
-I have many THICK thoughts...
-    """
-
-    # writer( write_thoughts(thoughts) )
-
-    return {}
-
-def nothing(state: State, config: RunnableConfig, writer: StreamWriter):
-    print("nothing node nothing node nothing node nothing node nothing node")
-
-    content = """
-
-...
-
-
-More content:
-
-```python
-def nothing(state: State, config: RunnableConfig, writer: StreamWriter):
-    print("nothing node nothing node nothing node nothing node nothing node")
-    return {}
-    # writer(
-```
-    """
-
-    writer( write_content(content) )
-
-    return {}
-
-# def nothing(state: State, config: RunnableConfig, writer: StreamWriter):
-#     print("nothing node nothing node nothing node nothing node nothing node")
-#     # return {}
-#     writer(
-#         {
-#             'title': 'custom shit',
-#             'content': 'THIS IS FROM MY NODE BROOOO'
-#             }
-#     )
-#     assistant_message = {"role": "assistant", "content": "nothing"}
-#     return {"messages": [assistant_message]}
-
-
 
 ############################################################################
 # NODE
 ############################################################################
 def ollama(state: State, config: RunnableConfig):
-    # llm = get_llm(config)
-    # configurable = Config.from_runnable_config(config)
-    
-    llm = ChatOllama(
-        model="llama3.1:8b",
-        keep_alive=-1,
-        # temperature=configurable.temperature / 100,
-        base_url=OLLAMA_HOST,
-        stream=True
-    )
-
-    response = llm.stream([{"role": "user", "content": "hello, sir"}])
-    
-    # Join all chunks into a single response
-    full_response = "".join(chunk.content for chunk in response)
-    # Add the assistant's response to the message history
-    assistant_message = {"role": "assistant", "content": full_response}
-    state.messages.append(assistant_message)
-    
-    # Return the updated messages list with the new response
-    return {"messages": [assistant_message]}
-
-
-def thought_llama(state: State, config: RunnableConfig):
     # llm = get_llm(config)
     # configurable = Config.from_runnable_config(config)
     

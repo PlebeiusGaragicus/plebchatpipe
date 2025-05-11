@@ -60,7 +60,7 @@ class Pipeline:
     def set_pipelines(self):
         try:
             # Try to get models from the server
-            response = requests.get(self.valves.PLEB_SERVER_URL + "/models")
+            response = requests.get(self.valves.PLEB_SERVER_URL + "/graphs")
             response.raise_for_status()
             server_models = response.json()
             
@@ -72,6 +72,7 @@ class Pipeline:
         except Exception as e:
             print(f"[WARNING] Failed to fetch models from server: {str(e)}")
             print("[INFO] Using default models")
+            raise
         pass
 
     def pipe(

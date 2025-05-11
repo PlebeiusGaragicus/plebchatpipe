@@ -8,6 +8,7 @@ from typing import Optional, Any, Annotated, Dict, List
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+from graphs.common import OLLAMA_HOST
 
 
 class State(BaseModel):
@@ -82,11 +83,37 @@ def newlines():
         ]
     }
 
-@app.get("/models")
-async def get_models():
+@app.get("/graphs")
+async def get_graphs():
     from graphs import all_graphs
 
     return all_graphs
+
+
+@app.get("/models")
+async def get_models():
+    import requests
+    
+    try:
+        ollama_url = f"{OLLAMA_HOST}/api/tags"
+
+        response = requests.get(ollama_url)
+        response.raise_for_status()
+        
+        # Extract the model names from the Ollama response
+        ollama_data = response.json()
+        models = []
+        
+        for model in ollama_data['models']:
+            if 'embed' not in model['name']: # skip some embedding models
+                models.append( model['name'] )
+
+        return models
+    except Exception as e:
+        print(f"Error fetching Ollama models: {str(e)}")
+        return {"error": f"Failed to fetch Ollama models: {str(e)}"}
+
+
 
 @app.post("/graph/{graph_id}")
 async def stream(graph_id: str, messages: State):
@@ -232,7 +259,7 @@ async def stream(graph_id: str, messages: State):
                         # For answer nodes or default, use content_tokens
                         yield f"data: {json.dumps(content_tokens(f'## {current_node}'))}\n\n"
                         yield f"data: {json.dumps(newlines())}\n\n"
-                
+
 
                 if hasattr(reply_content, 'content') and reply_content.content:
                     print(f"Content: {reply_content.content}")
