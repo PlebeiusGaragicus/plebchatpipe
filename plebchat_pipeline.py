@@ -54,8 +54,8 @@ class Pipeline:
         self.set_pipelines()
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
-        if self.valves.debug:
-            print(f"[DEBUG] Received request: {json.dumps(body, indent=2)}")
+        # if self.valves.debug:
+        #     print(f"[DEBUG] Received request: {json.dumps(body, indent=2)}")
 
         metadata = body.get("metadata", {})
         chat_id = metadata.get("chat_id", str(uuid.uuid4()))
@@ -102,7 +102,7 @@ class Pipeline:
         print(body)
         print("*"*30)
         print("MESSAGES")
-        print(messages)
+        print(json.dumps(messages, indent=2))
         print("*"*30)
 
         # Format messages as a list of dictionaries with 'role' and 'content' keys

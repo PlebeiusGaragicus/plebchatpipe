@@ -31,21 +31,22 @@ def _check_for_command(state: State, config: RunnableConfig):
         It checks if the last message (aka user query) starts with a '/'.
         This function is prefixed with a '_' so that it's progress doesn't show in the frontend UI
     """
-    query = state.messages[-1][-1]
+    query = state.messages[-1]['content']
     print(query)
     if query.startswith("/"):
         return "handle_command"
     return "ollama"
 
+from ..common import write_content
 
 ############################################################################
 # NODE
 ############################################################################
-def handle_command(state: State, config: RunnableConfig):
+def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     # configurable = Config.from_runnable_config(config)
 
     # extract command
-    query = state.messages[-1]
+    query = state.messages[-1]['content']
     split = query.split(" ")
     # Remove the slash and take the first word
     command = split[0][1:].lower()
@@ -60,7 +61,9 @@ def handle_command(state: State, config: RunnableConfig):
     # Use CommandHandler class method directly
     response = CommandHandler._run(command, arguments)
 
-    return {"messages": [{"role": "assistant", "content": response}]}
+    writer( write_content( response ) )
+
+    # return {"messages": [{"role": "assistant", "content": response}]}
 
 
 
