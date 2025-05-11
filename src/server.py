@@ -92,9 +92,7 @@ async def stream(graph_id: str, messages: State):
         
         try:
             print(f"DEBUG: Starting agent.stream with graph_id={graph_id}")
-            stream_generator = agent.stream(input=messages, config=config, stream_mode=["messages", "custom"])
-            print("DEBUG: Got stream generator, starting iteration")
-            for event, data in stream_generator:
+            for event, data in agent.stream(input=messages, config=config, stream_mode=["messages", "custom"]):
                 print(f"DEBUG: Received event: {event}")
 
                 if event == "custom":
@@ -134,9 +132,7 @@ async def stream(graph_id: str, messages: State):
 
                         yield f"data: {json.dumps(content_msg)}\n\n"
                         await asyncio.sleep(0)
-                        
-                # Debug log at the end of each iteration
-                print(f"DEBUG: Finished processing event: {event}")
+
 
             # Debug log after the for loop ends
             print("DEBUG: Exited the event loop - all events processed")
@@ -157,6 +153,7 @@ async def stream(graph_id: str, messages: State):
                 ]
             }
             yield f"data: {json.dumps(stream_end_msg)}\n\n"
+
 
         except Exception as e:
             # Capture the error and send it to the frontend
@@ -184,6 +181,8 @@ async def stream(graph_id: str, messages: State):
             }
             yield f"data: {json.dumps(error_end_msg)}\n\n"
             yield emit_event("Graph error!", True)
+
+
 
 
     return StreamingResponse(

@@ -19,6 +19,29 @@ from pydantic import BaseModel, Field
 from typing import List, Union, Generator, Iterator, Optional, Literal
 
 
+def error_generator(e, server_url):
+    """Generator function that yields error messages in the expected format.
+    
+    Args:
+        e: The exception that occurred
+        server_url: The URL of the server that failed to connect
+        
+    Yields:
+        Formatted error messages that match the expected response format
+    """
+    # Yield the status event
+    yield {
+        "event": {
+            "type": "status",
+            "data": {
+                "description": "🔴 GRAPH EXECUTION HALTED!",
+                "done": True,
+            },
+        }
+    }
+
+    # Yield a simple error message with the actual exception text
+    yield f"🚨 Connection to server failed!\n{type(e).__name__}: {str(e)}\nPlease check if the server at {server_url} is running."
 
 
 class Pipeline:
@@ -126,28 +149,10 @@ class Pipeline:
                 timeout=5.0  # 5 seconds timeout for connection attempt
             )
             response.raise_for_status()
+            return response.iter_lines()
+
 
         except Exception as e:
             print(f"ERROR: pipeline connection failed: {str(e)}")
-
-            # Yield the status event
-            yield {
-                "event": {
-                    "type": "status",
-                    "data": {
-                        "description": "🔴 GRAPH EXECUTION HALTED!",
-                        "done": True,
-                    },
-                }
-            }
-
-            # Yield a simple error message with the actual exception text
-            yield f"🚨 Connection to server failed!\n{type(e).__name__}: {str(e)}\nPlease check if the server at {self.valves.PLEB_SERVER_URL} is running."
-            # yield f"{type(e).__name__}"
-            # error_type = type(e).__name__
-            # error_message = str(e)
-
-            # We don't re-raise the exception because we're handling it by yielding messages
-            # return "" # Do this so we can continue the convo and the thread isn't 'wasted'
-
-        return response.iter_lines()
+            # Return a generator that yields error messages
+            return error_generator(e, self.valves.PLEB_SERVER_URL)
