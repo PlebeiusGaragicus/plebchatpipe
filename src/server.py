@@ -82,6 +82,12 @@ def newlines():
         ]
     }
 
+@app.get("/models")
+async def get_models():
+    from graphs import all_graphs
+
+    return all_graphs
+
 @app.post("/fren")
 async def stream( messages: State ):
 

@@ -62,9 +62,12 @@ class Pipeline:
             {"id": "fren", "name": "🐸"}
             {"id": "crab", "name": "🦀"}
         ]
-        # return [
-        #     {"id": "fren", "name": "fren"}
-        # ]
+
+        # try to get models
+        response = requests.post(self.valves.PLEB_SERVER_URL + f"/{model_id}", json=data, headers=headers, stream=True)
+        response.raise_for_status()
+        response.iter_lines()
+
         pass
 
     def pipe(
