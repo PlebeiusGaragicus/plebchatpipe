@@ -1,15 +1,15 @@
 import json
 import asyncio
 import operator
-import requests
 import traceback
-from enum import Enum
 from pydantic import BaseModel, Field
-from typing import Optional, Any, Annotated, Dict, List
+from typing import Annotated
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+
 from graphs.common import OLLAMA_HOST
+from helpers import content_tokens, newlines, thinking_tokens, thinking_newline, emit_event
 
 
 class State(BaseModel):
@@ -17,10 +17,9 @@ class State(BaseModel):
 
 
 
-
 app = FastAPI(
-    title="Langgraph API",
-    description="Langgraph API",
+    title="PlebChat Agents API",
+    description="A collection of agents, implemented with LangGraph",
     )
 
 @app.get("/health")
@@ -28,66 +27,9 @@ def health_check():
     """Health check endpoint for Docker healthcheck"""
     return {"status": "healthy"}
 
-def thinking_tokens(tokens: str):
-    return {
-        'choices': 
-        [
-            {
-                'delta':
-                {
-                    'reasoning_content': tokens, 
-                },
-                'finish_reason': None                            
-            }
-        ]
-    }
-
-def thinking_newline():
-    return {
-        'choices': 
-        [
-            {
-                'delta':
-                {
-                    'reasoning_content': "\n",
-                },
-                'finish_reason': None
-            }
-        ]
-    }
-
-def content_tokens(tokens: str):
-    return {
-        'choices': 
-        [
-            {
-                'delta':
-                {
-                    'content': tokens, 
-                },
-                'finish_reason': None
-            }
-        ]
-    }
-
-def newlines():
-    return {
-        'choices': 
-        [
-            {
-                'delta':
-                {
-                    'content': "\n\n",
-                },
-                'finish_reason': None
-            }
-        ]
-    }
-
 @app.get("/graphs")
 async def get_graphs():
     from graphs import all_graphs
-
     return all_graphs
 
 
@@ -115,18 +57,6 @@ async def get_models():
         return {"error": f"Failed to fetch Ollama models: {str(e)}"}
 
 
-def emit_event(description: str, done: bool):
-    event = {
-            "event": {
-                "type": "status",
-                "data": {
-                    "description": description,
-                    "done": done,
-                },
-            }
-        }
-    return f"data: {json.dumps(event)}\n\n"
-
 
 @app.post("/graph/{graph_id}")
 async def stream(graph_id: str, messages: State):
@@ -135,11 +65,12 @@ async def stream(graph_id: str, messages: State):
     # Check if the requested graph exists
     if graph_id not in graph_registry:
         return {"error": f"Graph with ID '{graph_id}' not found"}
-    
+
     # Get the appropriate graph based on the ID
     agent = graph_registry[graph_id]
 
     async def event_stream():
+        print("DEBUG: Starting event stream")
         # Start the stream with an empty delta to initialize the connection
         stream_start_msg = {
             'choices': [
@@ -153,14 +84,124 @@ async def stream(graph_id: str, messages: State):
         # await asyncio.sleep(0)  # Force flush
 
         yield emit_event("Running...", False)
+        print("DEBUG: Emitted initial running event")
         await asyncio.sleep(0)  # Force flush
 
         current_node = None
         config = {}
         
         try:
+            print(f"DEBUG: Starting agent.stream with graph_id={graph_id}")
             stream_generator = agent.stream(input=messages, config=config, stream_mode=["messages", "custom"])
+            print("DEBUG: Got stream generator, starting iteration")
             for event, data in stream_generator:
+                print(f"DEBUG: Received event: {event}")
+
+                if event == "custom":
+                    content_type = data['type']
+                    msg = data['content']
+                    # print(f"DEBUG: Custom event with type={content_type}, content={msg[:50]}..." if len(msg) > 50 else f"DEBUG: Custom event with type={content_type}, content={msg}")
+
+                    if content_type == "thought":
+                        yield f"data: {json.dumps(thinking_newline())}\n\n"
+                        yield f"data: {json.dumps( thinking_tokens( msg ) )}\n\n"
+                    else:
+                        yield f"data: {json.dumps(newlines())}\n\n"
+                        yield f"data: {json.dumps( content_tokens( msg ) )}\n\n"
+
+                if event == "messages":
+                    reply_content = data[0]
+                    metadata = data[1]
+                    print(f"DEBUG: Messages event with node={metadata.get('langgraph_node', 'unknown')}")
+
+                    # Handle node change
+                    if current_node != metadata["langgraph_node"]:
+                        current_node = metadata["langgraph_node"]
+                        print(f"node: {current_node}")
+                        nice_node_name = current_node.replace('_', ' ')
+                        yield emit_event(f"Running... {nice_node_name}", False)
+                        await asyncio.sleep(0)  # Force flush
+
+                    if hasattr(reply_content, 'content') and reply_content.content:
+                        content = reply_content.content
+                        # print(f"DEBUG: Content from {metadata.get('langgraph_node', 'unknown')}: {content[:50]}..." if len(content) > 50 else f"DEBUG: Content from {metadata.get('langgraph_node', 'unknown')}: {content}")
+                        print(content)
+
+                        if 'node_output_type' in metadata and metadata['node_output_type'] == "thought":
+                            content_msg = thinking_tokens(reply_content.content)
+                        else:
+                            content_msg = content_tokens(reply_content.content)
+
+                        yield f"data: {json.dumps(content_msg)}\n\n"
+                        await asyncio.sleep(0)
+                        
+                # Debug log at the end of each iteration
+                print(f"DEBUG: Finished processing event: {event}")
+
+            # Debug log after the for loop ends
+            print("DEBUG: Exited the event loop - all events processed")
+            
+            # yield emit_event("Completed", True)
+            yield emit_event("", True)
+
+            # Add debug output to indicate we're ending the stream
+            print("DEBUG: Ending stream normally")
+            
+            # End of the stream - moved outside the for loop
+            stream_end_msg = {
+                'choices': [ 
+                    {
+                        'delta': {}, 
+                        'finish_reason': 'stop'
+                    }
+                ]
+            }
+            yield f"data: {json.dumps(stream_end_msg)}\n\n"
+
+        except Exception as e:
+            # Capture the error and send it to the frontend
+            error_msg = str(e)
+            stack_trace = traceback.format_exc()
+            print(f"ERROR in graph execution: {error_msg}\n{stack_trace}")
+
+            # Send the error as a content message to the frontend
+            error_content = f"⚠️ Error in graph execution: {error_msg}"
+            yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
+            yield f"data: {json.dumps(newlines())}\n\n"
+
+            #TODO: ONLY IN DEBUG MODE!!! OTherwise we expose the working code of our app...
+            error_content = f"```{stack_trace}```"
+            yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
+
+            # End the stream with an error finish reason
+            error_end_msg = {
+                'choices': [ 
+                    {
+                        'delta': {}, 
+                        'finish_reason': 'error'
+                    }
+                ]
+            }
+            yield f"data: {json.dumps(error_end_msg)}\n\n"
+            yield emit_event("Graph error!", True)
+
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+            "X-Accel-Buffering": "no",  # Disable buffering in Nginx
+            "Transfer-Encoding": "chunked"
+        }
+    )
+
+
+
+
+
                 # print("===========================")
                 # print(f"event type: {type(event)}")
                 # print(f"data type: {type(data)}")
@@ -235,121 +276,3 @@ async def stream(graph_id: str, messages: State):
                 #             print(f">>> >>> data.{name} = {value}")
                 #     except Exception as e:
                 #         print(f">>> >>> Failed to inspect data object: {e}")
-
-
-                if event == "custom":
-                    content_type = data['type']
-                    msg = data['content']
-                    print(msg)
-
-                    if content_type == "thought":
-                        yield f"data: {json.dumps(thinking_newline())}\n\n"
-                        yield f"data: {json.dumps( thinking_tokens( msg ) )}\n\n"
-
-                    else:
-                        # title = data['title']
-                        #TODO: only write node name if in DEBUG mode
-                        # yield f"data: {json.dumps(content_tokens('---'))}\n\n"
-                        # yield f"data: {json.dumps(newlines())}\n\n"
-                        # yield f"data: {json.dumps( content_tokens( f'## {title}') )}\n\n"
-                        # yield f"data: {json.dumps(newlines())}\n\n"
-                        yield f"data: {json.dumps(newlines())}\n\n"
-                        yield f"data: {json.dumps( content_tokens( msg ) )}\n\n"
-
-                if event == "messages":
-                    reply_content = data[0]
-                    metadata = data[1]
-
-
-                    # Handle node change
-                    if current_node != metadata["langgraph_node"]:
-                        current_node = metadata["langgraph_node"]
-                        print(f"node: {current_node}")
-                        nice_node_name = current_node.replace('_', ' ')
-                        yield emit_event(f"Running... {nice_node_name}", False)
-                        await asyncio.sleep(0)  # Force flush
-
-                        # Output the node name as a header based on node type
-                        if 'node_output_type' in metadata and metadata['node_output_type'] == "thought":
-                            # For thought nodes, use thinking_tokens for the header
-                            # if current_node is not None:
-                                # yield f"data: {json.dumps(thinking_newline())}\n\n"
-                                # yield f"data: {json.dumps(thinking_tokens('---'))}\n\n"
-                            # yield f"data: {json.dumps(thinking_tokens('_'*len(current_node)))}\n\n"
-                            # yield f"data: {json.dumps(thinking_newline())}\n\n"
-                            # yield f"data: {json.dumps(thinking_tokens(f'### `{current_node}`'))}\n\n"
-                            # yield f"data: {json.dumps(thinking_newline())}\n\n"
-                            pass
-                        else:
-                            # For answer nodes or default, use content_tokens
-                            # yield f"data: {json.dumps(content_tokens(f'## {current_node}'))}\n\n"
-                            # yield f"data: {json.dumps(newlines())}\n\n"
-                            pass
-
-
-                    if hasattr(reply_content, 'content') and reply_content.content:
-                        # print(f"{reply_content.content}", end='', sep='|', flush=True)
-                        # print(f"{reply_content.content}", end='|', flush=False)
-                        print(reply_content.content)
-
-                        if 'node_output_type' in metadata and metadata['node_output_type'] == "thought":
-                            content_msg = thinking_tokens(reply_content.content)
-                        else:
-                            content_msg = content_tokens(reply_content.content)
-
-                        yield f"data: {json.dumps(content_msg)}\n\n"
-                        await asyncio.sleep(0)
-
-
-            # yield emit_event("Completed", True)
-            yield emit_event("", True)
-
-            # End of the stream
-            stream_end_msg = {
-                'choices': [ 
-                    {
-                        'delta': {}, 
-                        'finish_reason': 'stop'
-                    }
-                ]
-            }
-            yield f"data: {json.dumps(stream_end_msg)}\n\n"
-        except Exception as e:
-            # Capture the error and send it to the frontend
-            error_msg = str(e)
-            stack_trace = traceback.format_exc()
-            print(f"ERROR in graph execution: {error_msg}\n{stack_trace}")
-
-            # Send the error as a content message to the frontend
-            error_content = f"⚠️ Error in graph execution: {error_msg}"
-            yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
-            yield f"data: {json.dumps(newlines())}\n\n"
-
-            #TODO: ONLY IN DEBUG MODE!!! OTherwise we expose the working code of our app...
-            error_content = f"```{stack_trace}```"
-            yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
-            
-            # End the stream with an error finish reason
-            error_end_msg = {
-                'choices': [ 
-                    {
-                        'delta': {}, 
-                        'finish_reason': 'error'
-                    }
-                ]
-            }
-            yield f"data: {json.dumps(error_end_msg)}\n\n"
-            yield emit_event("Graph error!", True)
-
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-transform",
-            "Connection": "keep-alive",
-            "Content-Type": "text/event-stream",
-            "X-Accel-Buffering": "no",  # Disable buffering in Nginx
-            "Transfer-Encoding": "chunked"
-        }
-    )

@@ -65,6 +65,7 @@ class Pipeline:
         return body
 
     def set_pipelines(self):
+        #TODO: This fails (and ultimately the pipeline cannot be loaded into OUI) if the fkn server isn't running!! THAT SUCKS!
         try:
             # Try to get models from the server
             response = requests.get(self.valves.PLEB_SERVER_URL + "/graphs")
@@ -115,9 +116,38 @@ class Pipeline:
             'Content-Type': 'application/json',
         }
 
-        #TODO: pass in valves as "config"
-        response = requests.post(self.valves.PLEB_SERVER_URL + f"/graph/{model_id}", json=data, headers=headers, stream=True)
+        try:
+            #TODO: pass in valves as "config"
+            response = requests.post(
+                self.valves.PLEB_SERVER_URL + f"/graph/{model_id}",
+                json=data,
+                headers=headers,
+                stream=True,
+                timeout=5.0  # 5 seconds timeout for connection attempt
+            )
+            response.raise_for_status()
 
-        response.raise_for_status()
+        except Exception as e:
+            print(f"ERROR: pipeline connection failed: {str(e)}")
+
+            # Yield the status event
+            yield {
+                "event": {
+                    "type": "status",
+                    "data": {
+                        "description": "🔴 GRAPH EXECUTION HALTED!",
+                        "done": True,
+                    },
+                }
+            }
+
+            # Yield a simple error message with the actual exception text
+            yield f"🚨 Connection to server failed!\n{type(e).__name__}: {str(e)}\nPlease check if the server at {self.valves.PLEB_SERVER_URL} is running."
+            # yield f"{type(e).__name__}"
+            # error_type = type(e).__name__
+            # error_message = str(e)
+
+            # We don't re-raise the exception because we're handling it by yielding messages
+            # return "" # Do this so we can continue the convo and the thread isn't 'wasted'
 
         return response.iter_lines()
