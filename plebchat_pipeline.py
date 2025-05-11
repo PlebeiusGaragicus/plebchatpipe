@@ -14,25 +14,27 @@ licence: MIT
 import json
 import uuid
 import requests
+from enum import Enum, auto
 from pydantic import BaseModel, Field
-from typing import List, Union, Generator, Iterator, Optional
+from typing import List, Union, Generator, Iterator, Optional, Literal
+
+
 
 
 class Pipeline:
     class Valves(BaseModel):
         debug: bool = Field(default=False, description='run pipe in debug mode?')
         PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
-        # API_URL: str = Field(default="http://host.docker.internal:9000/stream", description="Langgraph API URL")
+        LLM_MODEL: Literal['llama3.1:8b', 'qwen3:4b-q8_0'] = Field(default="llama3.1:8b", description="LLM model to use")
+        #TODO: can we build a dynamic Literal type at runtime?  This way the available Ollama models can be listed.
+
+
 
     def __init__(self):
         self.type = "manifold"
-        self.name = "PlebChat: "
-        # self.id = "Plebchat"
+        self.name = "PlebChat: " # This is prefixed onto each of the manifold agent names
         self.chat_id = None
 
-        # self.valves = self.Valves(
-        #     **{k: os.getenv(k, v.default) for k, v in self.Valves.model_fields.items()}
-        # )
         self.valves = self.Valves()
         self.set_pipelines()
         pass
@@ -45,6 +47,8 @@ class Pipeline:
         print(f"PIPE: on_shutdown: {__name__}")
         pass
 
+    async def on_valves_updated(self):
+        self.set_pipelines()
 
     async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
         if self.valves.debug:
@@ -94,9 +98,13 @@ class Pipeline:
         print("*"*30)
         print(body)
         print("*"*30)
+        print("MESSAGES")
+        print(messages)
+        print("*"*30)
 
+        # Format messages as a list of dictionaries with 'role' and 'content' keys
         data = {
-            "messages": [[msg['role'], msg['content']] for msg  in messages],
+            "messages": messages,
             }
 
         headers = {
@@ -104,6 +112,7 @@ class Pipeline:
             'Content-Type': 'application/json',
         }
 
+        #TODO: pass in valves as "config"
         response = requests.post(self.valves.PLEB_SERVER_URL + f"/graph/{model_id}", json=data, headers=headers, stream=True)
 
         response.raise_for_status()

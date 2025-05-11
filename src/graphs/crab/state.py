@@ -86,28 +86,19 @@ def get_ollama_models() -> List[Dict[str, Any]]:
 class Config(BaseModel):
     """The configurable fields for the graph."""
 
-    # model: LLMModelsAvailable = Field(DEFAULT_LOCAL_MODEL)
-
-
-    temperature: int = Field(
-        50,
-        ge=0,
-        le=100,
-        description="Temperature for the model"
-    )
     keep_alive: KeepAlive = Field(
         KeepAlive.FIVE_MINUTES,
         description="How long to keep the model in memory"
     )
-    disable_commands: bool = Field(
-        False,
-        description="Whether to disable commands (i.e. starts with '/')"
-    )
-    system_prompt: str = Field(
-        SYSTEM_PROMPT,
-        format="multi-line",
-        description="What do you want to research?"
-    )
+    # disable_commands: bool = Field(
+    #     False,
+    #     description="Whether to disable commands (i.e. starts with '/')"
+    # )
+    # system_prompt: str = Field(
+    #     SYSTEM_PROMPT,
+    #     format="multi-line",
+    #     description="What do you want to research?"
+    # )
 
     ##############################################################
     @classmethod

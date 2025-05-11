@@ -229,8 +229,9 @@ async def stream(graph_id: str, messages: State):
                 else:
                     # title = data['title']
                     yield f"data: {json.dumps(newlines())}\n\n"
-                    yield f"data: {json.dumps(content_tokens('---'))}\n\n"
-                    yield f"data: {json.dumps(newlines())}\n\n"
+                    #TODO: only write node name if in DEBUG mode
+                    # yield f"data: {json.dumps(content_tokens('---'))}\n\n"
+                    # yield f"data: {json.dumps(newlines())}\n\n"
                     # yield f"data: {json.dumps( content_tokens( f'## {title}') )}\n\n"
                     # yield f"data: {json.dumps(newlines())}\n\n"
                     yield f"data: {json.dumps( content_tokens( msg ) )}\n\n"
