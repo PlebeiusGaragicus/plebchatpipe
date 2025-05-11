@@ -32,7 +32,10 @@ class Pipeline:
 
     def __init__(self):
         self.type = "manifold"
-        self.name = "PlebChat: " # This is prefixed onto each of the manifold agent names
+        # This is prefixed onto each of the manifold agent names
+        #NOTE: if the pipeline models are edited in OUI and their pipeline name changes.. it doesn't update.  This is a bug of OUI
+        self.name = "PlebChat: "
+        # self.name = "🗣️🤖💬 - "
         self.chat_id = None
 
         self.valves = self.Valves()
