@@ -59,7 +59,8 @@ class Pipeline:
 
     def set_pipelines(self):
         self.pipelines = [
-            {"id": "fren", "name": "fren"}
+            {"id": "fren", "name": "🐸"}
+            {"id": "crab", "name": "🦀"}
         ]
         # return [
         #     {"id": "fren", "name": "fren"}

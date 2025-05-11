@@ -10,9 +10,6 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 
-
-
-
 class State(BaseModel):
     messages: Annotated[list, operator.add] = Field(default_factory=list)
 
@@ -86,7 +83,7 @@ def newlines():
     }
 
 @app.post("/fren")
-async def stream(inputs: State):
+async def stream( messages: State ):
 
     from graphs.fren.graph import graph as agent
 
@@ -103,14 +100,12 @@ async def stream(inputs: State):
         yield f"data: {json.dumps(stream_start_msg)}\n\n"
         await asyncio.sleep(0)  # Force flush
 
-        # yield f"data: {json.dumps(thinking_newline())}\n\n"
-        # await asyncio.sleep(0)  # Force flush
-
         current_node = None
         config = {}
-        for event, data in agent.stream(input=inputs, config=config, stream_mode=["messages", "custom"]):
-            print(f">>> >>> event type: {type(event)}")
-            print(f">>> >>> data type: {type(data)}")
+        for event, data in agent.stream(input=messages, config=config, stream_mode=["messages", "custom"]):
+            print("===========================")
+            print(f"event type: {type(event)}")
+            print(f"data type: {type(data)}")
 
             # Handle different data types appropriately
             if isinstance(event, (dict, list, str, int, float, bool)) or event is None:
@@ -220,33 +215,23 @@ async def stream(inputs: State):
                         # yield f"data: {json.dumps(thinking_tokens('_'*len(current_node)))}\n\n"
                         yield f"data: {json.dumps(thinking_newline())}\n\n"
                         yield f"data: {json.dumps(thinking_tokens(f'### `{current_node}`'))}\n\n"
-                        # yield f"data: {json.dumps(thinking_newline())}\n\n"
-                        # yield f"data: {json.dumps(thinking_tokens('='*len(current_node)))}\n\n"
                         yield f"data: {json.dumps(thinking_newline())}\n\n"
                     else:
                         # For answer nodes or default, use content_tokens
                         yield f"data: {json.dumps(content_tokens(f'## {current_node}'))}\n\n"
                         yield f"data: {json.dumps(newlines())}\n\n"
                 
-                # Process content based on node type
+
                 if hasattr(reply_content, 'content') and reply_content.content:
                     print(f"Content: {reply_content.content}")
                     
-                    # Use different token types based on metadata
                     if 'node_output_type' in metadata and metadata['node_output_type'] == "thought":
-                        # For thought nodes, use thinking_tokens
                         content_msg = thinking_tokens(reply_content.content)
                     else:
-                        # For answer nodes or default, use content_tokens
-                        print("OLLAMA OUTPUTS")
-                        print("OLLAMA OUTPUTS")
-                        print("OLLAMA OUTPUTS")
-                        print("OLLAMA OUTPUTS")
                         content_msg = content_tokens(reply_content.content)
-                    
-                    # Send the content
+
                     yield f"data: {json.dumps(content_msg)}\n\n"
-                    await asyncio.sleep(0)  # Force flush after each chunk
+                    await asyncio.sleep(0)
 
 
         # End of the stream
