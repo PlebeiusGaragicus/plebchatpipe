@@ -88,10 +88,16 @@ async def get_models():
 
     return all_graphs
 
-@app.post("/fren")
-async def stream( messages: State ):
-
-    from graphs.fren.graph import graph as agent
+@app.post("/graph/{graph_id}")
+async def stream(graph_id: str, messages: State):
+    from graphs import graph_registry
+    
+    # Check if the requested graph exists
+    if graph_id not in graph_registry:
+        return {"error": f"Graph with ID '{graph_id}' not found"}
+    
+    # Get the appropriate graph based on the ID
+    agent = graph_registry[graph_id]
 
     async def event_stream():
         # Start the stream with an empty delta to initialize the connection

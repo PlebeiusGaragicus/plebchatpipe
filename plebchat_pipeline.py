@@ -58,16 +58,20 @@ class Pipeline:
         return body
 
     def set_pipelines(self):
-        self.pipelines = [
-            {"id": "fren", "name": "🐸"}
-            {"id": "crab", "name": "🦀"}
-        ]
-
-        # try to get models
-        response = requests.post(self.valves.PLEB_SERVER_URL + f"/{model_id}", json=data, headers=headers, stream=True)
-        response.raise_for_status()
-        response.iter_lines()
-
+        try:
+            # Try to get models from the server
+            response = requests.get(self.valves.PLEB_SERVER_URL + "/models")
+            response.raise_for_status()
+            server_models = response.json()
+            
+            # Update pipelines with models from server if available
+            if server_models and isinstance(server_models, list):
+                self.pipelines = server_models
+                if self.valves.debug:
+                    print(f"[DEBUG] Models loaded from server: {json.dumps(server_models, indent=2)}")
+        except Exception as e:
+            print(f"[WARNING] Failed to fetch models from server: {str(e)}")
+            print("[INFO] Using default models")
         pass
 
     def pipe(
@@ -99,7 +103,7 @@ class Pipeline:
             'Content-Type': 'application/json',
         }
 
-        response = requests.post(self.valves.PLEB_SERVER_URL + f"/{model_id}", json=data, headers=headers, stream=True)
+        response = requests.post(self.valves.PLEB_SERVER_URL + f"/graph/{model_id}", json=data, headers=headers, stream=True)
 
         response.raise_for_status()
 
