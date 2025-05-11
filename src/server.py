@@ -115,6 +115,18 @@ async def get_models():
         return {"error": f"Failed to fetch Ollama models: {str(e)}"}
 
 
+def emit_event(description: str, done: bool):
+    event = {
+            "event": {
+                "type": "status",
+                "data": {
+                    "description": description,
+                    "done": done,
+                },
+            }
+        }
+    return f"data: {json.dumps(event)}\n\n"
+
 
 @app.post("/graph/{graph_id}")
 async def stream(graph_id: str, messages: State):
@@ -138,6 +150,9 @@ async def stream(graph_id: str, messages: State):
             ]
         }
         yield f"data: {json.dumps(stream_start_msg)}\n\n"
+        # await asyncio.sleep(0)  # Force flush
+
+        yield emit_event("Running...", False)
         await asyncio.sleep(0)  # Force flush
 
         current_node = None
@@ -282,24 +297,32 @@ async def stream(graph_id: str, messages: State):
                         await asyncio.sleep(0)
 
 
-                # End of the stream
-                stream_end_msg = {
-                    'choices': [ 
-                        {
-                            'delta': {}, 
-                            'finish_reason': 'stop'
-                        }
-                    ]
-                }
-                yield f"data: {json.dumps(stream_end_msg)}\n\n"
+            # yield emit_event("Completed", True)
+            yield emit_event("", True)
+
+            # End of the stream
+            stream_end_msg = {
+                'choices': [ 
+                    {
+                        'delta': {}, 
+                        'finish_reason': 'stop'
+                    }
+                ]
+            }
+            yield f"data: {json.dumps(stream_end_msg)}\n\n"
         except Exception as e:
             # Capture the error and send it to the frontend
             error_msg = str(e)
             stack_trace = traceback.format_exc()
             print(f"ERROR in graph execution: {error_msg}\n{stack_trace}")
-            
+
             # Send the error as a content message to the frontend
             error_content = f"⚠️ Error in graph execution: {error_msg}"
+            yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
+            yield f"data: {json.dumps(newlines())}\n\n"
+
+            #TODO: ONLY IN DEBUG MODE!!! OTherwise we expose the working code of our app...
+            error_content = f"```{stack_trace}```"
             yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
             
             # End the stream with an error finish reason
@@ -312,6 +335,8 @@ async def stream(graph_id: str, messages: State):
                 ]
             }
             yield f"data: {json.dumps(error_end_msg)}\n\n"
+            yield emit_event("Graph error!", True)
+
 
     return StreamingResponse(
         event_stream(),
