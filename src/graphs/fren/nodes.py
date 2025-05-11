@@ -9,21 +9,20 @@ from langgraph.types import StreamWriter
 from .state import State, Config, SYSTEM_PROMPT
 from .commands import CommandHandler
 
-from ..common import OLLAMA_HOST
+# from ..common import OLLAMA_HOST
 
 ############################################################################
 # HELPER FUNCTIONS
 ############################################################################
 def get_llm(config: RunnableConfig):
     configurable = Config.from_runnable_config(config)
+
+    print("@#$"*15)
+    print(configurable)
     return ChatOllama(
         model=configurable.LLM_MODEL,
-        # model="llama3.1:8b",
-        # model="phi4-mini:3.8b-q8_0",
-        # model="qwen3:4b-q8_0",
-        keep_alive=-1,
-        # temperature=configurable.temperature / 100,
-        base_url=OLLAMA_HOST,
+        keep_alive=configurable.KEEP_ALIVE,
+        base_url=configurable.OLLAMA_BASE_URL
     )
 
 

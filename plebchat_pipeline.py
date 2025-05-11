@@ -12,7 +12,7 @@ licence: MIT
 
 
 ################################################
-DEFAULT_OLLAMA_MODEL = "llama3.1:8"
+DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
 
 
 
@@ -62,6 +62,7 @@ class Pipeline:
 
         DISABLE_COMMANDS: bool = Field(False, description="Whether to disable commands (i.e. starts with '/')")
         PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
+        OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434", description="Ollama server URL")
         DEBUG: bool = Field(default=False, description='run pipe in debug mode?')
 
 
@@ -102,11 +103,12 @@ class Pipeline:
     def set_pipelines(self):
         #TODO: This fails (and ultimately the pipeline cannot be loaded into OUI) if the fkn server isn't running!! THAT SUCKS!
         try:
-            # Try to get models from the server
-            response = requests.get(self.valves.PLEB_SERVER_URL + "/graphs")
+            # Try to get available graphs/agents from the server
+            # response = requests.get(self.valves.PLEB_SERVER_URL + "/graphs")
+            response = requests.get("http://host.docker.internal:9000/graphs")
             response.raise_for_status()
             server_models = response.json()
-            
+
             # Update pipelines with models from server if available
             if server_models and isinstance(server_models, list):
                 self.pipelines = server_models

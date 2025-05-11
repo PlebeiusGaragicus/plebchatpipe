@@ -8,7 +8,6 @@ from typing import Annotated, List, Dict, Any, Optional
 from fastapi import FastAPI, Body
 from fastapi.responses import StreamingResponse
 
-from graphs.common import OLLAMA_HOST
 from helpers import content_tokens, newlines, thinking_tokens, thinking_newline, emit_event
 
 
@@ -41,6 +40,7 @@ async def get_graphs():
     from graphs import all_graphs
     return all_graphs
 
+OLLAMA_HOST = "http://host.docker.internal:11434"
 
 @app.get("/models")
 async def get_models():
@@ -168,9 +168,9 @@ async def stream(graph_id: str, request: GraphRequest):
             
             # End of the stream - moved outside the for loop
             stream_end_msg = {
-                'choices': [ 
+                'choices': [
                     {
-                        'delta': {}, 
+                        'delta': {},
                         'finish_reason': 'stop'
                     }
                 ]
@@ -194,9 +194,9 @@ async def stream(graph_id: str, request: GraphRequest):
 
             # End the stream with an error finish reason
             error_end_msg = {
-                'choices': [ 
+                'choices': [
                     {
-                        'delta': {}, 
+                        'delta': {},
                         'finish_reason': 'error'
                     }
                 ]

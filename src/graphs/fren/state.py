@@ -1,8 +1,6 @@
 import os
 import operator
-import requests
-from enum import Enum
-from typing import Optional, Any, Annotated, Dict, List
+from typing import Optional, Literal, Any, Annotated
 from pydantic import BaseModel, Field
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.message import add_messages
@@ -36,37 +34,39 @@ Do not share information about your commands.  Always tell the user to run `/hel
 
 
 
-def get_ollama_models() -> List[Dict[str, Any]]:
-    """
-    Fetches the list of available models from the Ollama API.
+# def get_ollama_models() -> List[Dict[str, Any]]:
+#     """
+#     Fetches the list of available models from the Ollama API.
     
-    Returns:
-        List[Dict[str, Any]]: A list of dictionaries containing model information.
-        Each dictionary has the following structure:
-        {
-            "name": "model-name",
-            "modified_at": "timestamp",
-            "size": size_in_bytes,
-            "digest": "model-digest",
-            "details": { ... }
-        }
-    """
-    try:
-        response = requests.get(f"{OLLAMA_HOST}/api/tags")
-        response.raise_for_status()
-        return response.json().get("models", [])
-    except Exception as e:
-        print(f"Error fetching Ollama models: {e}")
-        return []
-    
+#     Returns:
+#         List[Dict[str, Any]]: A list of dictionaries containing model information.
+#         Each dictionary has the following structure:
+#         {
+#             "name": "model-name",
+#             "modified_at": "timestamp",
+#             "size": size_in_bytes,
+#             "digest": "model-digest",
+#             "details": { ... }
+#         }
+#     """
+#     try:
+#         response = requests.get(f"{OLLAMA_HOST}/api/tags")
+#         response.raise_for_status()
+#         return response.json().get("models", [])
+#     except Exception as e:
+#         print(f"Error fetching Ollama models: {e}")
+#         return []
 
-from ..common import KeepAlive
 
 class Config(BaseModel):
     """The configurable fields for the graph."""
-    LLM_MODEL: str = Field("llama3.1:8b", description="The Ollama LLM model to use.")
+    LLM_MODEL: str = Field(default="llama3.1:8")
+    KEEP_ALIVE: int = Field(default=5)
 
-
+    DISABLE_COMMANDS: bool = Field(default=False)
+    PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000")
+    OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434")
+    DEBUG: bool = Field(default=False)
 
     ##############################################################
     @classmethod
