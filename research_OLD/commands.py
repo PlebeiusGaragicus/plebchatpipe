@@ -7,16 +7,12 @@ class CommandHandler(BaseCommandHandler):
     def version(cls, args: list[str] = None):
         """Return the version of this graph."""
         return VERSION
-
+        
     @classmethod
     def about(cls, args: list[str] = None):
         """Get information about the research agent."""
         return """
-Hi, I'm Abby, an AI research assistant.
-
-I was created to be your personal, open-source, self-hosted, internet-research companion.  I can search the web for information and answer your questions about what we find.
-
-I ampowered by LangGraph and Ollama, and written for an Open WebUI front-end.
+I am a research assistant powered by LangGraph that can search the web for information.
 
 I use SearXNG to perform web searches and provide comprehensive answers with citations.
 

@@ -237,18 +237,20 @@ Include citations to the relevant sources using the format [1], [2], etc."""
         # Call the LLM with streaming
         response = llm.stream(messages)
         
-        # Initialize an empty answer
-        full_answer = ""
-        
-        # Stream each chunk as it comes in
-        for chunk in response:
-            if hasattr(chunk, 'content'):
-                content = chunk.content
-                full_answer += content
-                writer(write_content(content))
+
+        full_response = "".join(chunk.content for chunk in response)
+
+        # Add the assistant's response to the message history
+        assistant_message = {"role": "assistant", "content": full_response}
+        state.messages.append(assistant_message)
+
+        print('='*40)
+        print("GENERATE ANSWER SAID...")
+        print(assistant_message)
+        print('='*40)
 
         # Return the updated state with the answer
-        return {"answer": full_answer}
+        return {"answer": [assistant_message]}
         
     except Exception as e:
         error_message = f"Error generating answer: {str(e)}"
