@@ -62,7 +62,8 @@ class Pipeline:
         DISABLE_COMMANDS: bool = Field(False, description="Whether to disable commands (i.e. starts with '/')")
         PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
         OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434", description="Ollama server URL")
-        SEARXNG_URL: str = Field(default="http://searxng:8080", description="SearXNG API URL")
+        # SEARXNG_URL: str = Field(default="http://searxng:8080", description="SearXNG API URL")
+        SEARXNG_URL: str = Field(default="http://host.docker.internal:4001", description="SearXNG API URL")
         #TODO: change to False in prod
         DEBUG: bool = Field(default=True, description='run pipe in debug mode?')
 

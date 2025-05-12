@@ -39,38 +39,39 @@ services:
     #       memory: 512M
 
 
-  searxng:
-    image: docker.io/searxng/searxng:latest
+# KEEP THIS
+  # searxng:
+  #   image: docker.io/searxng/searxng:latest
 
-    container_name: searxng
+  #   container_name: searxng
 
-    volumes:
-      - ./searxng:/etc/searxng:rw
+  #   volumes:
+  #     - ./searxng:/etc/searxng:rw
 
-    ports:
-      - 4001:8080
+  #   ports:
+  #     - 4001:8080
 
-    environment:
-      - INSTANCE_NAME=PlebChatResearch
-      - SEARXNG_BASE_URL=http://localhost:4001/
-      - SEARXNG_HOSTNAME=0.0.0.0
-      # Allow connections from our application
-      - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
-      # Disable rate limiting for our internal use
-      - SEARXNG_LIMITER=false
-      # Enable all engines
-      - SEARXNG_ENGINES_DISABLE=
+  #   environment:
+  #     - INSTANCE_NAME=PlebChatResearch
+  #     - SEARXNG_BASE_URL=http://localhost:4001/
+  #     - SEARXNG_HOSTNAME=0.0.0.0
+  #     # Allow connections from our application
+  #     - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
+  #     # Disable rate limiting for our internal use
+  #     - SEARXNG_LIMITER=false
+  #     # Enable all engines
+  #     - SEARXNG_ENGINES_DISABLE=
 
-    restart: unless-stopped
+  #   restart: unless-stopped
     
-    # Add healthcheck to ensure SearXNG is running properly
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+  #   # Add healthcheck to ensure SearXNG is running properly
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 10s
       
-    # Ensure SearXNG can connect to the internet
-    networks:
-      - default
+  #   # Ensure SearXNG can connect to the internet
+  #   networks:
+  #     - default

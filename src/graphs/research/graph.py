@@ -13,12 +13,13 @@ from typing import Dict, Any, List, Optional
 
 from langchain_core.runnables import RunnableConfig
 from langchain_ollama import ChatOllama
-
+from langgraph.graph.state import StateGraph
 from langgraph.types import StreamWriter
 
 from ..config import Config
 from ..common import write_content, write_thoughts
-from .state import State, SYSTEM_PROMPT
+
+from .commands import CommandHandler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -70,19 +71,24 @@ def get_llm(config: RunnableConfig):
 ############################################################################
 # CONDITIONAL NODE
 ############################################################################
-def _check_for_command(state: State, config: RunnableConfig):
+def _check_for_command(state: State, config: RunnableConfig, writer: StreamWriter):
     """
         NOTE: This is the first conditional node on our graph
         It checks if the last message (aka user query) starts with a '/'.
         This function is prefixed with a '_' so that it's progress doesn't show in the frontend UI
     """
+
+    #TODO: check state query
     query = state.messages[-1]['content']
     # print(query)
+
     if query.startswith("/"):
+        writer( write_thoughts(f"I found a command! `{query}`") )
         return "handle_command"
+
+    writer( write_thoughts("no command... continue") )
     return "ollama"
 
-from ..common import write_content
 
 ############################################################################
 # NODE
@@ -107,7 +113,7 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 ############################################################################
 # NODE
 ############################################################################
-def ollama(state: State, config: RunnableConfig):
+def ollama(state: State, config: RunnableConfig, writer: StreamWriter):
 
     # If we have a new user query, add it to the messages
     if state.query:
@@ -131,24 +137,28 @@ def ollama(state: State, config: RunnableConfig):
         print(json.dumps(m, indent=2))
     print("*"*30)
 
-    # Call the LLM with the full conversation history
-    llm = get_llm(config)
-    response = llm.stream(state.messages)
+    # writer( write_thoughts() )
+    writer( write_content("nothing") )
 
-    # Join all chunks into a single response
-    full_response = "".join(chunk.content for chunk in response)
+    # KEEP ALL THIS
+    # # Call the LLM with the full conversation history
+    # llm = get_llm(config)
+    # response = llm.stream(state.messages)
 
-    # Add the assistant's response to the message history
-    assistant_message = {"role": "assistant", "content": full_response}
-    state.messages.append(assistant_message)
+    # # Join all chunks into a single response
+    # full_response = "".join(chunk.content for chunk in response)
 
-    print('='*40)
-    print("THE ASSISTANT SAID..")
-    print(assistant_message)
-    print('='*40)
+    # # Add the assistant's response to the message history
+    # assistant_message = {"role": "assistant", "content": full_response}
+    # state.messages.append(assistant_message)
 
-    # Return the updated messages list with the new response
-    return {"messages": [assistant_message]}
+    # print('='*40)
+    # print("THE ASSISTANT SAID..")
+    # print(assistant_message)
+    # print('='*40)
+
+    # # Return the updated messages list with the new response
+    # return {"messages": [assistant_message]}
 
 
 
@@ -156,12 +166,10 @@ def ollama(state: State, config: RunnableConfig):
 
 
 from ..config import Config
-from .state import State
 graph_builder = StateGraph(State, input=State, config_schema=Config)
 
 
 ## ADD ALL OUR NODES
-from .nodes import ollama, _check_for_command, handle_command
 graph_builder.add_node("ollama", ollama, metadata={"node_output_type": "answer"})
 graph_builder.add_node("handle_command", handle_command)
 
