@@ -109,19 +109,20 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 
     # Get command output
     cmd_output = CommandHandler._run(command, arguments)
-    
+
     # Handle the command output based on its properties
     if cmd_output.returnDirect:
         # Return the output directly to the user
         writer(write_content(cmd_output.cmdOutput))
+        return
+
     else:
         # The output should be processed by an LLM before returning to the user
         writer(write_thoughts(f"Processing command output with LLM..."))
         writer(write_thoughts( '---' ))
-        writer(write_thoughts( "command output:" ))
+        writer(write_thoughts( "### command output:" ))
         writer(write_thoughts( cmd_output.cmdOutput ))
-        writer(write_thoughts( '---' ))
-        writer(write_thoughts( '---' ))
+
 
         # Create prompt for LLM
         prompt = cmd_output.reinjectionPrompt or "Process this information and provide a helpful response:"

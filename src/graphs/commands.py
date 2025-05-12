@@ -1,5 +1,9 @@
 class CommandOutput:
-    def __init__(self, cmdOutput: str, returnDirect: bool = True, reinjectionPrompt: str = None):
+    def __init__(self,
+            cmdOutput: str,
+            returnDirect: bool = True,
+            reinjectionPrompt: str = None
+        ):
         """
         Container for command output with options for how to process it.
         
@@ -31,7 +35,10 @@ class CommandHandler:
             # If method exists and is callable, invoke it
             return method(arguments)
         else:
-            return CommandOutput(cmdOutput=f"""# ⛓️‍💥\n{cls.help()}""")
+            # Get the help command output
+            help_output = cls.help()
+            help_text = help_output.cmdOutput
+            return CommandOutput(cmdOutput=f"""# ⛓️‍💥\n{help_text}""")
 
 
 ####################################################################################
