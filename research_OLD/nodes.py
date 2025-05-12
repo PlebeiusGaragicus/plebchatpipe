@@ -10,7 +10,7 @@ from langchain_ollama import ChatOllama
 from langgraph.types import StreamWriter
 
 from ..config import Config
-from ..common import write_content, write_though
+from ..common import write_content, write_thought
 from .state import State, SYSTEM_PROMPT
 
 # Configure logging

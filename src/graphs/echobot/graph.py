@@ -9,7 +9,7 @@ from langgraph.graph.state import StateGraph
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import StreamWriter
 
-from ..common import write_content, write_though, NodeOutputType
+from ..common import write_content, write_thought, NodeOutputType
 
 
 class State(BaseModel):

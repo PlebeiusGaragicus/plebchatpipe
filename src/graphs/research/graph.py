@@ -11,6 +11,7 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 
+
 from langchain_core.runnables import RunnableConfig
 from langchain_ollama import ChatOllama
 from langgraph.graph.state import StateGraph
@@ -22,7 +23,7 @@ from ..common import write_content, write_thought, NodeOutputType
 from .commands import CommandHandler
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO) 
 logger = logging.getLogger(__name__)
 
 
