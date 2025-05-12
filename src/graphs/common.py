@@ -1,4 +1,6 @@
+import json
 from enum import Enum
+from typing import Callable
 
 # OLLAMA_HOST = "http://host.docker.internal:11434"
 
@@ -32,3 +34,12 @@ def write_content(content: str):
         'type': 'content',
         'content': content
     }
+
+def answer(content, writer: Callable):
+    writer( write_content( f"\n{content}\n" ) )
+
+def think(content, writer: Callable):
+    writer( write_thought( f"\n{content}\n" ) )
+
+def think_codeblock(content: str, writer: Callable):
+    writer( write_thought( f"\n```\n{json.dumps(content, indent=2)}\n```\n" ) )

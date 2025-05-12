@@ -37,27 +37,20 @@ class State(BaseModel):
 from langgraph.types import StreamWriter
 
 # These are my custom enhancements
-from ..common import write_content, write_thought, NodeOutputType
+from ..common import NodeOutputType, think, answer, think_codeblock
 from graphs import configuration
 
 ##############################################################
 #NOTE: since we aren't using an LLM to generate tokens, we need to use the writer to print to the UI
 def echo(state: State, config: RunnableConfig, writer: StreamWriter):
-
-    # Get the `DEBUG` setting from the config
     configurable = configuration.Configuration.from_runnable_config(config)
-    
-    writer( write_thought( f"\n```\n{json.dumps(configurable.__dict__, indent=2)}\n```\n" ) )
-
-    print("*"*40)
-    print(configurable)
-    print(configurable.DEBUG)
 
     if configurable.DEBUG == True:
-        writer( write_thought( "Geesh... this guy's an idiot amirite?" ) )
+        think_codeblock( configurable.__dict__, writer=writer )
+        think( "Geesh... this guy's an idiot amirite?", writer=writer )
 
     echoback = state.messages[-1]['content']
-    writer( write_content( echoback ) )
+    answer( echoback, writer=writer )
 
 
 

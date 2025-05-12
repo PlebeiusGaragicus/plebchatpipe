@@ -8,7 +8,24 @@ from fastapi import FastAPI, Body
 from fastapi.responses import StreamingResponse
 
 from graphs.common import NodeOutputType
-from helpers import content_tokens, newlines, thinking_tokens, thinking_newline, emit_event
+
+
+def thinking_tokens(tokens: str):
+    return {'choices': [{'delta':{'reasoning_content': tokens, },'finish_reason': None}]}
+
+def thinking_newline():
+    return {'choices': [{'delta':{'reasoning_content': "\n\n",},'finish_reason': None}]}
+
+def content_tokens(tokens: str):
+    return {'choices': [{'delta':{'content': tokens, },'finish_reason': None}]}
+
+def content_newline():
+    return {'choices': [{'delta':{'content': "\n\n",},'finish_reason': None}]}
+
+def emit_event(description: str, done: bool):
+    event = {"event": {"type": "status","data": {"description": description,"done": done,},}}
+    return f"data: {json.dumps(event)}\n\n"
+
 
 
 # Define Pydantic models for request validation
@@ -148,7 +165,7 @@ async def stream(graph_id: str, request: GraphRequest):
                         yield f"data: {json.dumps(thinking_newline())}\n\n"
                         yield f"data: {json.dumps( thinking_tokens( msg ) )}\n\n"
                     else:
-                        yield f"data: {json.dumps(newlines())}\n\n"
+                        yield f"data: {json.dumps( content_newline())}\n\n"
                         yield f"data: {json.dumps( content_tokens( msg ) )}\n\n"
 
                 if event == "messages":
@@ -197,7 +214,7 @@ async def stream(graph_id: str, request: GraphRequest):
             # Send the error as a content message to the frontend
             error_content = f"⚠️ Error in graph execution: {error_msg}"
             yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
-            yield f"data: {json.dumps(newlines())}\n\n"
+            yield f"data: {json.dumps(content_newline())}\n\n"
 
             #TODO: ONLY IN DEBUG MODE!!! OTherwise we expose the working code of our app...
             error_content = f"```{stack_trace}```"
