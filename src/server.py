@@ -113,7 +113,7 @@ async def stream(graph_id: str, request: GraphRequest):
     # Since the field names in request.config already match what Configuration expects,
     # we can just wrap it in the "configurable" key
     config = {"configurable": request.config}
-    print(f"Config being passed to from_runnable_config: {config}")
+    print(f"Config recieved inside FastAPI: {config}")
 
 
     from graphs import graph_registry

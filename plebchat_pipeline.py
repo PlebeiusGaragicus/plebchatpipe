@@ -50,6 +50,16 @@ def error_generator(e, server_url):
     yield f"Connection to server failed: `{type(e).__name__}`\n"
     yield f"```\n{str(e)}\n```\n"
     yield f"Please check if the server at {server_url} is running."
+    # End the stream with an error finish reason
+    stream_end = {
+        'choices': [
+            {
+                'delta': {},
+                'finish_reason': 'error'
+            }
+        ]
+    }
+    yield f"data: {json.dumps(stream_end)}\n\n"
 
 
 class Pipeline:
@@ -74,7 +84,7 @@ class Pipeline:
     def __init__(self):
         self.type = "manifold"
         self.name = "PlebChat: " # This is prefixed onto each of the manifold agent names
-        #NOTE: if the pipeline models are edited in OUI and their pipeline name changes.. it doesn't update.  This is a bug of OUI
+        #NOTE: if the pipeline models are edited in OUI and their pipeline name changes.. it doesn't update.  This is a bug/issue of OUI
 
         #NOTE: we will define our own variables (outside of `body`, `message`, etc) that will persist along the lifespan of the call
         self.metadata = None
@@ -158,18 +168,18 @@ class Pipeline:
         print("metadata:")
         print(json.dumps(self.metadata, indent=2))
         print("*"*30)
-        # print(body["metadata"]['chat_id'])
-        # print("*"*30)
-
-        valve_config = self.valves.model_dump()
 
         data = {
             "query": user_message,  # Include the original user query
             "messages": messages,
-            "config": valve_config  # Include all valve settings as config
-            }
+            "config": self.valves.model_dump()  # Include all valve settings as config
+        }
 
         data['config']['thread_id'] = self.thread_id
+        print("*"*30)
+        print("THIS IS THE FINAL VERSION OF THE DATA PAYLOAD THAT WILL BE SENT")
+        print(json.dumps(data, indent=2))
+        print("*"*30)
 
         headers = {
             'accept': 'text/event-stream',
@@ -177,7 +187,6 @@ class Pipeline:
         }
 
         try:
-            #TODO: pass in valves as "config"
             response = requests.post(
                 self.valves.PLEB_SERVER_URL + f"/graph/{model_id}",
                 json=data,
@@ -187,7 +196,6 @@ class Pipeline:
             )
             response.raise_for_status()
             return response.iter_lines()
-
 
         except Exception as e:
             print(f"ERROR: pipeline connection failed: {str(e)}")

@@ -33,5 +33,28 @@ def answer(content, writer: Callable):
 def think(content, writer: Callable):
     writer( write_thought( f"\n{content}\n" ) )
 
-def think_codeblock(content: str, writer: Callable):
-    writer( write_thought( f"\n```\n{json.dumps(content, indent=2)}\n```\n" ) )
+def json_serializable(obj):
+    """Convert an object to a JSON serializable format.
+    
+    Handles non-serializable objects by converting them to their string representation.
+    """
+    if isinstance(obj, dict):
+        return {k: json_serializable(v) for k, v in obj.items() if not k.startswith('__')}
+    elif isinstance(obj, list):
+        return [json_serializable(item) for item in obj]
+    elif isinstance(obj, (str, int, float, bool, type(None))):
+        return obj
+    else:
+        # For non-serializable objects, return their string representation
+        return str(obj)
+
+def think_codeblock(content, writer: Callable):
+    """Display a code block in the UI with proper JSON formatting.
+    
+    Handles non-serializable objects by converting them to their string representation.
+    """
+    # Convert the content to a JSON serializable format
+    serializable_content = json_serializable(content)
+    
+    # Format as JSON and display in a code block
+    writer(write_thought(f"\n```json\n{json.dumps(serializable_content, indent=2)}\n```\n"))
