@@ -1,17 +1,17 @@
 from .VERSION import VERSION
 
-from ..commands import CommandHandler as BaseCommandHandler
+from ..commands import CommandHandler as BaseCommandHandler, CommandOutput
 
 class CommandHandler(BaseCommandHandler):
     @classmethod
     def version(cls, args: list[str] = None):
         """Return the version of this graph."""
-        return VERSION
+        return CommandOutput(cmdOutput=VERSION)
 
     @classmethod
     def about(cls, args: list[str] = None):
         """Get information about the research agent."""
-        return """
+        about_text = """
 Hi, I'm Abby, an AI research assistant.
 
 I was created to be your personal, open-source, self-hosted, internet-research companion.  I can search the web for information and answer your questions about what we find.
@@ -24,18 +24,33 @@ Try `/help` for a list of commands.
 
 Here's my [source code on GitHub](https://github.com/PlebeiusGaragicus/plebchatpipe)
 """
-
+        return CommandOutput(cmdOutput=about_text)
+        
     @classmethod
-    def search(cls, args: list[str] = None):
-        """Perform a web search on a specific topic.
-        
-        Usage: /search [query]
-        Searches the web for information on the specified query and returns relevant results.
+    def summarize(cls, args: list[str] = None):
+        """Extract and summarize the main content from a website URL.
+
+        Usage: /summarize https://example.com
+        Scrapes the content from the provided URL and generates a concise summary.
+        This allows you to quickly understand the key points from web content.
         """
-        if not args or not args[0]:
-            return "⚠️ Please provide a search query.\n\n**Example:**\n```\n/search latest AI developments\n```"
-        
-        # The actual search functionality is handled by the graph's search_web node
-        # This command just provides an explicit way to trigger a search
-        query = " ".join(args)
-        return f"🔍 Searching for: {query}\n\nPlease wait while I retrieve information..."
+        # Get the URL content using the base url command
+        url_result = BaseCommandHandler.url(args)
+
+        # Create a reinjection prompt for summarization
+        reinjection_prompt = f"""
+You are a helpful AI assistant that summarizes web content.
+
+Please provide a concise summary that includes:
+1. The main topic or purpose of the page
+2. Key points and important information
+3. Any relevant conclusions or takeaways
+
+Format your response in a clear, well-structured way using markdown formatting.
+"""
+
+        return CommandOutput(
+            cmdOutput=url_result.cmdOutput,
+            returnDirect=False,  # Process through LLM
+            reinjectionPrompt=reinjection_prompt
+        )

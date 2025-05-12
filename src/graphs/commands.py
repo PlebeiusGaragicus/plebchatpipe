@@ -1,3 +1,19 @@
+class CommandOutput:
+    def __init__(self, cmdOutput: str, returnDirect: bool = True, reinjectionPrompt: str = None):
+        """
+        Container for command output with options for how to process it.
+        
+        Args:
+            cmdOutput: The output text of the command
+            returnDirect: If True, return the output directly to the user without LLM processing
+            reinjectionPrompt: If provided, this prompt will be used when reinjecting the output to an LLM
+        """
+        self.cmdOutput = cmdOutput  # The output of the command
+        self.returnDirect = returnDirect  # Return directly to user or reinject to LLM?
+        self.reinjectionPrompt = reinjectionPrompt  # Prompt to use when reinjecting
+
+
+
 class CommandHandler:
     @classmethod
     def _run(cls, command: str, arguments: list[str]):
@@ -10,12 +26,12 @@ class CommandHandler:
         # Try to get the method corresponding to the command
         method = getattr(cls, command, None)
 
-        # If method exists and is callable, invoke it
+        # commands starting in '_' can't be called (like this one, '_run()')
         if callable(method) and not command.startswith('_'):
+            # If method exists and is callable, invoke it
             return method(arguments)
         else:
-            # return f"""# ⛓️‍💥\n`/{command}` command not found!\n## Commands available:\n{cls.help()}"""
-            return f"""# ⛓️‍💥\n{cls.help()}"""
+            return CommandOutput(cmdOutput=f"""# ⛓️‍💥\n{cls.help()}""")
 
 
 ####################################################################################
@@ -34,14 +50,16 @@ class CommandHandler:
             if hasattr(cls, command) and callable(getattr(cls, command)) and not command.startswith("_"):
                 method = getattr(cls, command)
                 doc = method.__doc__ or "No description available."
-                return f"""## Help: /{command}
+                output = f"""## Help: /{command}
 
 ```
 {doc}
 ```
 """
+                return CommandOutput(cmdOutput=output)
             else:
-                return f"Command '/{command}' not found. Type `/help` to see all available commands."
+                output = f"Command '/{command}' not found. Type `/help` to see all available commands."
+                return CommandOutput(cmdOutput=output)
         
         # Generate usage text from available methods
         command_list = [
@@ -59,12 +77,13 @@ class CommandHandler:
             first_line = doc.strip().split('\n')[0]
             command_docs.append(f"- `/{cmd}` - {first_line}")
 
-        return f"""### Commands Available
+        output = f"""### Commands Available
 
 {chr(10).join(command_docs)}
 
 For detailed help on a specific command, type `/help command_name`
 """
+        return CommandOutput(cmdOutput=output)
 
 
 ####################################################################################
@@ -72,12 +91,19 @@ For detailed help on a specific command, type `/help command_name`
     def version(cls, args: list[str] = None):
         """Return the version of this graph."""
         raise NotImplementedError("Each graph must implement its own version method")
+        # Implementation should return CommandOutput like:
+        # return CommandOutput(cmdOutput="v1.0.0", returnDirect=True)
 
 ####################################################################################
     @classmethod
     def about(cls, args: list[str] = None):
         """Get information about the agent."""
         raise NotImplementedError("Each graph must implement its own about method")
+        # Implementation should return CommandOutput like:
+        # return CommandOutput(
+        #     cmdOutput="About this agent...", 
+        #     returnDirect=True
+        # )
 
 
 ####################################################################################
@@ -85,11 +111,9 @@ For detailed help on a specific command, type `/help command_name`
     def url(cls, args: list[str] = None):
         """Extract and display the main content from a website URL.
 
-        Usage: /url [https://example.com]
+        Usage: /url https://example.com
         Scrapes the content from the provided URL and displays it in the chat.
         This allows you to discuss, summarize, or analyze web content directly.
-
-        The URL must start with https:// for security reasons.
         """
         import requests
         from readability import Document
@@ -97,14 +121,16 @@ For detailed help on a specific command, type `/help command_name`
 
         # Check if URL was provided
         if not args or len(args) == 0:
-            return "⚠️ Please provide a URL.\n\n**Example:**\n```\n/url https://example.com\n```"
+            error_msg = "⚠️ Please provide a URL.\n\n**Example:**\n```\n/url https://example.com\n```"
+            return CommandOutput(cmdOutput=error_msg)
 
         # Get the first argument as the URL
         url = args[0]
 
         # Check if URL uses HTTP instead of HTTPS
         if url.startswith("http://"):
-            return f"⚠️ The URL must start with `https://`\n\n**Example:**\n```\n/url https://example.com\n```"
+            error_msg = f"⚠️ The URL must start with `https://`\n\n**Example:**\n```\n/url https://example.com\n```"
+            return CommandOutput(cmdOutput=error_msg)
 
         # Add https:// prefix if missing
         if not url.startswith("https://"):
@@ -146,12 +172,14 @@ For detailed help on a specific command, type `/help command_name`
             if len(result) > 30_000:
                 result = result[:30_000] + "\n\n... *Content truncated due to length* ..."
 
-            return result
+            return CommandOutput(cmdOutput=result)
 
         except requests.exceptions.RequestException as e:
-            return f"⚠️ Error fetching the URL: {str(e)}"
+            error_msg = f"⚠️ Error fetching the URL: {str(e)}"
+            return CommandOutput(cmdOutput=error_msg)
         except Exception as e:
-            return f"⚠️ Error processing the webpage content: {str(e)}"
+            error_msg = f"⚠️ Error processing the webpage content: {str(e)}"
+            return CommandOutput(cmdOutput=error_msg)
 
 
 

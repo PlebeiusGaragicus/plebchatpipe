@@ -84,9 +84,11 @@ def _check_for_command(state: State, config: RunnableConfig, writer: StreamWrite
 
     if query.startswith("/"):
         writer( write_thoughts(f"I found a command! `{query}`") )
+        writer(write_thoughts( '\n---\n' ))
         return "handle_command"
 
     writer( write_thoughts("no command... continue") )
+    writer(write_thoughts( '\n---\n' ))
     return "ollama"
 
 
@@ -105,9 +107,46 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     if not command:
         command = ""
 
-    response = CommandHandler._run(command, arguments)
-    #NOTE: This node doesn't have an LLM call, but we can output a reply this way
-    writer( write_content( response ) )
+    # Get command output
+    cmd_output = CommandHandler._run(command, arguments)
+    
+    # Handle the command output based on its properties
+    if cmd_output.returnDirect:
+        # Return the output directly to the user
+        writer(write_content(cmd_output.cmdOutput))
+    else:
+        # The output should be processed by an LLM before returning to the user
+        writer(write_thoughts(f"Processing command output with LLM..."))
+        writer(write_thoughts( '---' ))
+        writer(write_thoughts( "command output:" ))
+        writer(write_thoughts( cmd_output.cmdOutput ))
+        writer(write_thoughts( '---' ))
+        writer(write_thoughts( '---' ))
+
+        # Create prompt for LLM
+        prompt = cmd_output.reinjectionPrompt or "Process this information and provide a helpful response:"
+
+        # Get the LLM
+
+        # Prepare messages for the LLM
+        messages = [
+            {"role": "system", "content": cmd_output.reinjectionPrompt},
+            {"role": "user", "content": f"{prompt}\n\n{cmd_output.cmdOutput}"}
+        ]
+
+        llm = get_llm(config)
+        response = llm.stream(state.messages)
+
+        # Join all chunks into a single response
+        full_response = "".join(chunk.content for chunk in response)
+
+        # Add the assistant's response to the message history
+        assistant_message = {"role": "assistant", "content": full_response}
+        state.messages.append(assistant_message)
+
+        # Return the updated messages list with the new response
+        return {"messages": [assistant_message]}
+
 
 
 ############################################################################

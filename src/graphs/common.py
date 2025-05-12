@@ -13,7 +13,7 @@
 def write_thoughts(content: str):
     return {
         'type': 'thought',
-        'content': content
+        'content': f"{content}\n"
     }
 
 def write_content(content: str):

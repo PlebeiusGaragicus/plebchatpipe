@@ -81,8 +81,8 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 def ollama(state: State, config: RunnableConfig):
 
 
-    llm = get_llm(config)
-    configurable = Config.from_runnable_config(config)
+    # llm = get_llm(config)
+    # configurable = Config.from_runnable_config(config)
 
     # If we have a new user query, add it to the messages
     if state.query:
@@ -107,6 +107,7 @@ def ollama(state: State, config: RunnableConfig):
     print("*"*30)
 
     # Call the LLM with the full conversation history
+    llm = get_llm(config)
     response = llm.stream(state.messages)
 
     # Join all chunks into a single response
