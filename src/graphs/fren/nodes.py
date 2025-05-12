@@ -70,10 +70,10 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 
     else:
         # The output should be processed by an LLM before returning to the user
-        writer(write_thoughts(f"Processing command output with LLM..."))
-        writer(write_thoughts( '---' ))
-        writer(write_thoughts( "### command output:" ))
-        writer(write_thoughts( cmd_output.cmdOutput ))
+        writer(write_thought(f"Processing command output with LLM..."))
+        writer(write_thought( '---' ))
+        writer(write_thought( "### command output:" ))
+        writer(write_thought( cmd_output.cmdOutput ))
 
 
         # Create prompt for LLM

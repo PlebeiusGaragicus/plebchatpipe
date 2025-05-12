@@ -21,7 +21,7 @@ class NodeOutputType(str, Enum):
 
 #NOTE: These are used with LangGraph StreamWriter
 #TODO: improve documentation
-def write_thoughts(content: str):
+def write_thought(content: str):
     return {
         'type': 'thought',
         'content': f"{content}\n"

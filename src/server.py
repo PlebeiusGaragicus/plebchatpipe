@@ -128,7 +128,14 @@ async def stream(graph_id: str, request: GraphRequest):
                 "query": request.query
             }
             
-            for event, data in agent.stream(input=input_state, config=request.config, stream_mode=["messages", "custom"]):
+            for event, data in agent.stream(input=input_state, config=request.config, stream_mode=["messages", "custom", "updates"]):
+
+                if event == "updates":
+                    # we will just pretty print the state for debugging
+                    print('$'*30)
+                    print("!!! STATE UPDATE !!!")
+                    print(json.dumps(data, indent=2))
+                    print('$'*30)
 
                 if event == "custom":
                     content_type = data['type']

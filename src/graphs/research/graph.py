@@ -17,7 +17,7 @@ from langgraph.graph.state import StateGraph
 from langgraph.types import StreamWriter
 
 from ..config import Config
-from ..common import write_content, write_thoughts, NodeOutputType
+from ..common import write_content, write_thought, NodeOutputType
 
 from .commands import CommandHandler
 
@@ -83,13 +83,13 @@ def _check_for_command(state: State, config: RunnableConfig, writer: StreamWrite
     # print(query)
 
     if query.startswith("/"):
-        writer( write_thoughts(f"I found a command! `{query}`") )
-        writer(write_thoughts( '\n---\n' ))
+        writer( write_thought(f">> I found a command! `{query}`") )
+        writer(write_thought( '\n---\n' ))
         return "handle_command"
 
-    writer( write_thoughts("no command... continue") )
-    writer(write_thoughts( '\n---\n' ))
-    return "ollama"
+    writer( write_thought(">> no command... continue") )
+    writer( write_thought( '\n---\n' ) )
+    return "router"
 
 
 ############################################################################
@@ -118,10 +118,10 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 
     else:
         # The output should be processed by an LLM before returning to the user
-        writer(write_thoughts(f"Processing command output with LLM..."))
-        writer(write_thoughts( '---' ))
-        writer(write_thoughts( "### command output:" ))
-        writer(write_thoughts( cmd_output.cmdOutput ))
+        writer(write_thought(f"Processing command output with LLM..."))
+        writer(write_thought( '---' ))
+        writer(write_thought( "### command output:" ))
+        writer(write_thought( cmd_output.cmdOutput ))
 
 
         # Create prompt for LLM
@@ -153,32 +153,45 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 ############################################################################
 # NODE
 ############################################################################
-def ollama(state: State, config: RunnableConfig, writer: StreamWriter):
+def router(state: State, config: RunnableConfig, writer: StreamWriter):
 
-    # If we have a new user query, add it to the messages
-    if state.query:
-        # Add the user's query to the message history
-        user_message = {"role": "user", "content": state.query}
-        # Ensure we're not duplicating the message if it's already in the state
-        if not state.messages or state.messages[-1] != user_message:
-            state.messages.append(user_message)
-
-    # Add system prompt to messages if it's not already there
-    # Check if the first message is a system message
-    if not state.messages or state.messages[0].get("role") != "system":
-        # Prepend system prompt to messages
-        state.messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state.messages
+    writer( write_thought("nothing") )
 
 
+    # check if the last message was from the 'assistant' - if so, this convo was continued.  If not, this convo is NEW
+    if state.messages[-1].get("role", None) == 'assistant':
+        print(">>>>> NEW CONVO DETECTED")
+        writer( write_thought(">>>>> NEW CONVO DETECTED") )
+        return "search"
+    else:
+        print(">>>>> CONVO IS BEING CONTINUED")
+        writer( write_thought(">>>>> CONVO IS BEING CONTINUED") )
 
-    print("*"*30)
-    print("GRAPH STATE INSIDE THE NODE")
-    for m in state.messages:
-        print(json.dumps(m, indent=2))
-    print("*"*30)
 
-    # writer( write_thoughts() )
-    writer( write_content("nothing") )
+    # # If we have a new user query, add it to the messages
+    # if state.query:
+    #     # Add the user's query to the message history
+    #     user_message = {"role": "user", "content": state.query}
+    #     # Ensure we're not duplicating the message if it's already in the state
+    #     if not state.messages or state.messages[-1] != user_message:
+    #         state.messages.append(user_message)
+
+    # # Add system prompt to messages if it's not already there
+    # # Check if the first message is a system message
+    # if not state.messages or state.messages[0].get("role") != "system":
+    #     # Prepend system prompt to messages
+    #     state.messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state.messages
+
+
+
+    # print("*"*30)
+    # print("GRAPH STATE INSIDE THE NODE")
+    # for m in state.messages:
+    #     print(json.dumps(m, indent=2))
+    # print("*"*30)
+
+    # writer( write_content("nothing") )
+
 
     # KEEP ALL THIS
     # # Call the LLM with the full conversation history
@@ -208,15 +221,15 @@ def ollama(state: State, config: RunnableConfig, writer: StreamWriter):
 from ..config import Config
 graph_builder = StateGraph(State, input=State, config_schema=Config)
 
-
-## ADD ALL OUR NODES
-graph_builder.add_node("ollama", ollama, metadata={"node_output_type": NodeOutputType.THOUGHT})
-graph_builder.add_node("handle_command", handle_command)
-
-
-## CONNECT ALL OUR NODES
 graph_builder.add_conditional_edges("__start__", _check_for_command)
+# We route to either of these...
+graph_builder.add_node("handle_command", handle_command)
+graph_builder.add_node("router", router, metadata={"node_output_type": NodeOutputType.THOUGHT})
+
+
+
+# __end__
 graph_builder.add_edge("handle_command", "__end__")
-graph_builder.add_edge("ollama", "__end__")
+graph_builder.add_edge("router", "__end__")
 
 graph = graph_builder.compile()

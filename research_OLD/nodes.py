@@ -10,7 +10,7 @@ from langchain_ollama import ChatOllama
 from langgraph.types import StreamWriter
 
 from ..config import Config
-from ..common import write_content, write_thoughts
+from ..common import write_content, write_though
 from .state import State, SYSTEM_PROMPT
 
 # Configure logging
@@ -137,7 +137,7 @@ def search_web(state: State, config: RunnableConfig, writer: StreamWriter):
     query = state.query or state.messages[-1]['content']
     
     # Output to thoughts using StreamWriter
-    writer(write_thoughts(f"🔍 Searching the web for: {query}"))
+    writer(write_thought(f"🔍 Searching the web for: {query}"))
     
     # Get SearXNG URL from config
     searxng_url = configurable.SEARXNG_URL or "http://searxng:8080"
@@ -146,22 +146,22 @@ def search_web(state: State, config: RunnableConfig, writer: StreamWriter):
     search_results, error = perform_web_search(query, searxng_url)
     
     if error:
-        writer(write_thoughts(f"⚠️ Search error: {error}"))
+        writer(write_thought(f"⚠️ Search error: {error}"))
         return {"error": error}
     
     if not search_results:
-        writer(write_thoughts("No search results found. Please try a different query."))
+        writer(write_thought("No search results found. Please try a different query."))
         return {"search_results": [], "error": "No search results found"}
     
     # Format search results for display in thoughts
     result_summary = f"Found {len(search_results)} results:"
-    writer(write_thoughts(result_summary))
+    writer(write_thought(result_summary))
     
     # Display each search result in thoughts
     for i, result in enumerate(search_results):
         title = result.get("title", "No title")
         url = result.get("url", "No URL")
-        writer(write_thoughts(f"[{i+1}] {title} - {url}"))
+        writer(write_thought(f"[{i+1}] {title} - {url}"))
     
     # Return the updated state with search results
     return {"search_results": search_results}
@@ -231,7 +231,7 @@ Include citations to the relevant sources using the format [1], [2], etc."""
     messages.append({"role": "user", "content": user_prompt})
     
     # Inform the user that we're generating an answer
-    writer(write_thoughts("🤔 Analyzing search results and generating an answer..."))
+    writer(write_thought("🤔 Analyzing search results and generating an answer..."))
     
     try:
         # Call the LLM with streaming
@@ -255,7 +255,7 @@ Include citations to the relevant sources using the format [1], [2], etc."""
     except Exception as e:
         error_message = f"Error generating answer: {str(e)}"
         logger.error(error_message)
-        writer(write_thoughts(f"⚠️ {error_message}"))
+        writer(write_thought(f"⚠️ {error_message}"))
         return {"error": error_message}
 
 
