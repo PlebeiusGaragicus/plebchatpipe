@@ -7,6 +7,7 @@ from typing import Annotated, List, Dict, Any, Optional
 from fastapi import FastAPI, Body
 from fastapi.responses import StreamingResponse
 
+from graphs.common import NodeOutputType
 from helpers import content_tokens, newlines, thinking_tokens, thinking_newline, emit_event
 
 
@@ -155,7 +156,7 @@ async def stream(graph_id: str, request: GraphRequest):
                     if hasattr(reply_content, 'content') and reply_content.content:
                         # print(reply_content.content) #  show tokens as they stream
 
-                        if 'node_output_type' in metadata and metadata['node_output_type'] == "thought":
+                        if 'node_output_type' in metadata and metadata['node_output_type'] == NodeOutputType.THOUGHT:
                             content_msg = thinking_tokens(reply_content.content)
                         else:
                             content_msg = content_tokens(reply_content.content)

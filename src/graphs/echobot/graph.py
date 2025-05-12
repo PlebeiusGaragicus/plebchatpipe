@@ -9,7 +9,7 @@ from langgraph.graph.state import StateGraph
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import StreamWriter
 
-from ..common import write_content, write_thoughts
+from ..common import write_content, write_thoughts, NodeOutputType
 
 
 class State(BaseModel):
@@ -48,7 +48,7 @@ def echo(state: State, config: RunnableConfig, writer: StreamWriter):
 
 graph_builder = StateGraph(State, input=State, config_schema=Config)
 
-graph_builder.add_node("echo", echo, metadata={"node_output_type": "answer"})
+graph_builder.add_node("echo", echo, metadata={"node_output_type": NodeOutputType.ANSWER})
 graph_builder.add_edge("__start__", "echo")
 graph_builder.add_edge("echo", "__end__")
 
