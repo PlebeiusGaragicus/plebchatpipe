@@ -12,7 +12,7 @@ from langchain_core.runnables import RunnableConfig
 
 @dataclass(kw_only=True)
 class Configuration:
-    DEBUG: bool = True #TODO
+    DEBUG: bool = True
 
     OLLAMA_KEEP_ALIVE: str = "5m"
     OLLAMA_LLM_CHATMODEL: str = "llama3.1:8"
@@ -37,4 +37,5 @@ class Configuration:
             for f in fields(cls)
             if f.init
         }
-        return cls(**{k: v for k, v in values.items() if v})
+        # Don't filter out False values - keep all values that are not None
+        return cls(**{k: v for k, v in values.items() if v is not None})

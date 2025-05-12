@@ -13,6 +13,7 @@ It serves as an example.
 ### DEFINE GRAPH STATE
 ##############################################################
 import os
+import json
 import operator
 from pydantic import BaseModel, Field
 from typing import Optional, Any, Annotated
@@ -45,6 +46,8 @@ def echo(state: State, config: RunnableConfig, writer: StreamWriter):
 
     # Get the `DEBUG` setting from the config
     configurable = configuration.Configuration.from_runnable_config(config)
+    
+    writer( write_thought( f"\n```\n{json.dumps(configurable.__dict__, indent=2)}\n```\n" ) )
 
     print("*"*40)
     print(configurable)

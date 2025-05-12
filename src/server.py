@@ -67,7 +67,6 @@ async def get_models():
         return {"error": f"Failed to fetch Ollama models: {str(e)}"}
 
 
-
 @app.post("/graph/{graph_id}")
 async def stream(graph_id: str, request: GraphRequest):
 
@@ -92,6 +91,11 @@ async def stream(graph_id: str, request: GraphRequest):
     if request.query:
         print(f"Query: {request.query}")
     print("*"*30)
+
+    # Since the field names in request.config already match what Configuration expects,
+    # we can just wrap it in the "configurable" key
+    config = {"configurable": request.config}
+    print(f"Config being passed to from_runnable_config: {config}")
 
 
     from graphs import graph_registry
@@ -127,7 +131,7 @@ async def stream(graph_id: str, request: GraphRequest):
             }
 
             current_node = None
-            for event, data in agent.stream(input=input_state, config=request.config, stream_mode=["messages", "custom", "updates"]):
+            for event, data in agent.stream(input=input_state, config=config, stream_mode=["messages", "custom", "updates"]):
 
                 if event == "updates":
                     # we will just pretty print the state for debugging

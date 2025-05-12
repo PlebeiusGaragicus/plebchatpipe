@@ -54,18 +54,18 @@ def error_generator(e, server_url):
 
 class Pipeline:
     class Valves(BaseModel):
-        #TODO: change to False in prod
         DEBUG: bool = Field(default=True, description='run pipe in debug mode?')
 
         #TODO: how can we dynamically create a Literal type at runtime?  We can populate it with models Ollama has downloaded
         #TODO: The description field doesn't show up in OUI...
-        LLM_MODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
-        KEEP_ALIVE: Literal["-1", "0", "5m"] = Field("5m", description="How long to keep the model in memory")
+        OLLAMA_KEEP_ALIVE: Literal["-1", "0", "5m"] = Field("5m", description="How long to keep the model in memory")
+        OLLAMA_LLM_CHATMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
+        OLLAMA_LLM_TOOLMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
+        OLLAMA_LLM_CODEMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
+        OLLAMA_LLM_SMARTMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
 
-        DISABLE_COMMANDS: bool = Field(False, description="Whether to disable commands (i.e. starts with '/')")
         PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
         OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434", description="Ollama server URL")
-        # SEARXNG_URL: str = Field(default="http://searxng:8080", description="SearXNG API URL")
         SEARXNG_URL: str = Field(default="http://host.docker.internal:4001", description="SearXNG API URL")
 
 
