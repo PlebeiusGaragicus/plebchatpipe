@@ -23,7 +23,7 @@ import json
 import uuid
 import requests
 from pydantic import BaseModel, Field
-from typing import List, Union, Generator, Iterator, Literal
+from typing import List, Union, Generator, Iterator, Literal, Optional
 
 
 def error_generator(e, server_url):
@@ -73,11 +73,12 @@ class Pipeline:
 
     def __init__(self):
         self.type = "manifold"
-        # This is prefixed onto each of the manifold agent names
+        self.name = "PlebChat: " # This is prefixed onto each of the manifold agent names
         #NOTE: if the pipeline models are edited in OUI and their pipeline name changes.. it doesn't update.  This is a bug of OUI
-        self.name = "PlebChat: "
-        # self.name = "🗣️🤖💬 - "
-        self.chat_id = None
+
+        #NOTE: we will define our own variables (outside of `body`, `message`, etc) that will persist along the lifespan of the call
+        self.metadata = None
+        self.thread_id = None
 
         self.valves = self.Valves()
         self.set_pipelines()
@@ -95,15 +96,19 @@ class Pipeline:
         self.set_pipelines()
         pass
 
-    # async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
-    #     # if self.valves.debug:
-    #     #     print(f"[DEBUG] Received request: {json.dumps(body, indent=2)}")
+    async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
+        if self.valves.DEBUG:
+            print(f"[PIPELINE INLET] body: {json.dumps(body, indent=2)}")
+            print(f"[PIPELINE INLET] user: {json.dumps(user, indent=2)}")
 
-    #     metadata = body.get("metadata", {})
-    #     chat_id = metadata.get("chat_id", str(uuid.uuid4()))
-    #     metadata["chat_id"] = chat_id
-    #     body["metadata"] = metadata
-    #     return body
+        metadata = body.get("metadata", {})
+        self.metadata = metadata
+        self.thread_id = metadata.get("chat_id", str(uuid.uuid4()))
+
+        # not sure what these do... they don't seem to "stick"
+        # metadata["chat_id"] = chat_id
+        # body["metadata"] = metadata
+        return body
 
     def set_pipelines(self):
         #TODO: This fails (and ultimately the pipeline cannot be loaded into OUI) if the fkn server isn't running!! THAT SUCKS!
@@ -142,11 +147,19 @@ class Pipeline:
         # print("*"*30)
         # print(model_id)
         print("*"*30)
-        print(body)
-        print("*"*30)
         print("MESSAGES")
         print(json.dumps(messages, indent=2))
         print("*"*30)
+        print(body)
+        print("*"*30)
+        print("thread_id:")
+        print(self.thread_id)
+        print("*"*30)
+        print("metadata:")
+        print(json.dumps(self.metadata, indent=2))
+        print("*"*30)
+        # print(body["metadata"]['chat_id'])
+        # print("*"*30)
 
         valve_config = self.valves.model_dump()
 
@@ -155,6 +168,8 @@ class Pipeline:
             "messages": messages,
             "config": valve_config  # Include all valve settings as config
             }
+
+        data['config']['thread_id'] = self.thread_id
 
         headers = {
             'accept': 'text/event-stream',
