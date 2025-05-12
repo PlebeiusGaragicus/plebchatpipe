@@ -83,7 +83,7 @@ async def stream(graph_id: str, request: GraphRequest):
     
     print(f"REQUEST TYPE: {'TOOL SELECTION' if is_tool_selection else 'REGULAR CHAT'}")
     print("*"*30)
-    
+
     print(f"MESSAGES:")
     for m in request.messages:
         print(json.dumps(m, indent=2))
@@ -119,15 +119,14 @@ async def stream(graph_id: str, request: GraphRequest):
         yield emit_event("Running...", False)
         await asyncio.sleep(0)  # Force flush
 
-        current_node = None
-        
         try:
             # Format input according to the State model structure
             input_state = {
                 "messages": request.messages,
                 "query": request.query
             }
-            
+
+            current_node = None
             for event, data in agent.stream(input=input_state, config=request.config, stream_mode=["messages", "custom", "updates"]):
 
                 if event == "updates":
