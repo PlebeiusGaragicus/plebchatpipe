@@ -2,13 +2,6 @@ import json
 from enum import Enum
 from typing import Callable
 
-# OLLAMA_HOST = "http://host.docker.internal:11434"
-
-# class KeepAlive(str, Enum):
-#     NONE = "0"
-#     FIVE_MINUTES = "5m"
-#     FOREVER = "-1"
-
 
 class NodeOutputType(str, Enum):
     """Enum for node output types used in LangGraph node metadata.
@@ -22,7 +15,6 @@ class NodeOutputType(str, Enum):
 
 
 #NOTE: These are used with LangGraph StreamWriter
-#TODO: improve documentation
 def write_thought(content: str):
     return {
         'type': 'thought',

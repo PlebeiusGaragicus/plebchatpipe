@@ -1,8 +1,4 @@
-"""
-The configurable fields for our graphs.
-
-NOTE: this should mirror the Valves from our Open WebUI pipeline - 'plebchat_pipeline.py'
-"""
+"""The configurable fields for our graphs."""
 
 import os
 from typing import Optional, Any
@@ -12,6 +8,7 @@ from langchain_core.runnables import RunnableConfig
 
 @dataclass(kw_only=True)
 class Configuration:
+    # NOTE: these should mirror the Valves from our Open WebUI pipeline - 'plebchat_pipeline.py'
     DEBUG: bool = True
 
     OLLAMA_KEEP_ALIVE: str = "5m"
@@ -23,6 +20,8 @@ class Configuration:
     PLEB_SERVER_URL: str = "http://host.docker.internal:9000"
     OLLAMA_BASE_URL: str = "http://host.docker.internal:11434"
     SEARXNG_URL: str = "http://host.docker.internal:4001"
+
+    TAVILY_API_KEY: str = None
 
     @classmethod
     def from_runnable_config(

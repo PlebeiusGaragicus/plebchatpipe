@@ -68,6 +68,8 @@ class Pipeline:
         OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434", description="Ollama server URL")
         SEARXNG_URL: str = Field(default="http://host.docker.internal:4001", description="SearXNG API URL")
 
+        TAVILY_API_KEY: str = Field(default="NOT_SET", description="Tavily API key")
+
 
     def __init__(self):
         self.type = "manifold"
