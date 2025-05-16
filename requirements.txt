@@ -4,10 +4,25 @@ uvicorn[standard]>=0.24.0
 pydantic>=2.0.0
 
 # LangGraph and LangChain dependencies
+# langgraph
+# langgraph-api
+# langchain-core
+# langchain-ollama
+# langchain_openai
 langgraph
+langgraph-prebuilt
+langgraph-sdk
+langgraph-checkpoint-sqlite
+langsmith
+langchain-community
 langchain-core
-langchain-ollama
-langchain_openai
+langchain-openai
+notebook
+tavily-python
+wikipedia
+trustcall
+# TODO: REMOVE THIS FOR PRODUCTION - IT'S FOR LANGGRAPH STUDIO
+langgraph-cli[inmem]
 
 # Type hints and extensions
 typing-extensions>=4.8.0

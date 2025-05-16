@@ -1,6 +1,5 @@
 """This is an example LangGraph agent with the most basic functionality."""
 
-
 ##############################################################
 ### DEFINE GRAPH STATE
 ##############################################################
@@ -24,26 +23,14 @@ from graphs.common import NodeOutputType, think, answer, think_codeblock
 
 
 def echo(state: State, config: RunnableConfig, writer: StreamWriter):
-    configurable = configuration.Configuration.from_runnable_config(config)
-    print(configurable)
-    print(configurable)
-    print(configurable)
-    print(configurable)
-    
-    # Display debug information if DEBUG is True
-    if configurable.DEBUG == True:
-        # # Display all configuration attributes as a code block
-        think_codeblock(configurable.__dict__, writer=writer)
-        
-        # Access dynamically added attributes
-        if hasattr(configurable, 'thread_id'):
-            think(f"Thread ID: {configurable.thread_id}", writer=writer)
-            
-        # Show some attitude in debug mode
-        think("Geesh... this guy's an idiot amirite?", writer=writer)
 
-    # Echo back the user's message
+    configurable = configuration.Configuration.from_runnable_config(config)
+    if configurable.DEBUG == True:
+        # Display configuration as a code block
+        think_codeblock(configurable.__dict__, writer=writer)
+
     echoback = state.messages[-1]['content']
+    #NOTE: since we aren't using an LLM to generate tokens, we need to use the writer to print to the UI
     answer(echoback, writer=writer)
 
 
