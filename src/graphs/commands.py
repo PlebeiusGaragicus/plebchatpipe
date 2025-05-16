@@ -134,6 +134,9 @@ For detailed help on a specific command, type `/help command_name`
         # Get the first argument as the URL
         url = args[0]
 
+        # strip whitespace
+        url = url.strip()
+
         # Check if URL uses HTTP instead of HTTPS
         if url.startswith("http://"):
             error_msg = f"⚠️ The URL must start with `https://`\n\n**Example:**\n```\n/url https://example.com\n```"
