@@ -6,9 +6,9 @@ from langchain_ollama import ChatOllama
 
 from langgraph.types import StreamWriter
 
-from ..config import Config
-from .state import State, SYSTEM_PROMPT
-from .commands import CommandHandler
+from graphs import configuration
+from graphs.fren.state import State, SYSTEM_PROMPT
+from graphs.fren.commands import CommandHandler
 
 # from ..common import OLLAMA_HOST
 
@@ -16,7 +16,7 @@ from .commands import CommandHandler
 # HELPER FUNCTIONS
 ############################################################################
 def get_llm(config: RunnableConfig):
-    configurable = Config.from_runnable_config(config)
+    configurable = configuration.Configuration.from_runnable_config(config)
 
     print("@#$"*15)
     print(configurable)

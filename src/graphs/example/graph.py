@@ -19,7 +19,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import StreamWriter
 
 from graphs import configuration
-from graphs.common import NodeOutputType, think, answer, think_codeblock
+from graphs.common import NodeOutputType, answer, think_codeblock
 
 
 def echo(state: State, config: RunnableConfig, writer: StreamWriter):
