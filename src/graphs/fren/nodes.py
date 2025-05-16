@@ -1,4 +1,5 @@
 import json
+from typing import Literal
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import HumanMessage
@@ -10,7 +11,6 @@ from graphs import configuration
 from graphs.fren.state import State, SYSTEM_PROMPT
 from graphs.fren.commands import CommandHandler
 
-# from ..common import OLLAMA_HOST
 
 ############################################################################
 # HELPER FUNCTIONS
@@ -18,11 +18,9 @@ from graphs.fren.commands import CommandHandler
 def get_llm(config: RunnableConfig):
     configurable = configuration.Configuration.from_runnable_config(config)
 
-    print("@#$"*15)
-    print(configurable)
     return ChatOllama(
-        model=configurable.LLM_MODEL,
-        keep_alive=configurable.KEEP_ALIVE,
+        model=configurable.OLLAMA_LLM_CHATMODEL,
+        keep_alive=configurable.OLLAMA_KEEP_ALIVE,
         base_url=configurable.OLLAMA_BASE_URL
     )
 
@@ -30,27 +28,37 @@ def get_llm(config: RunnableConfig):
 ############################################################################
 # CONDITIONAL NODE
 ############################################################################
-def _check_for_command(state: State, config: RunnableConfig):
+def check_for_command(state: State, config: RunnableConfig) -> Literal["handle_command", "ollama"]:
     """
         NOTE: This is the first conditional node on our graph
         It checks if the last message (aka user query) starts with a '/'.
         This function is prefixed with a '_' so that it's progress doesn't show in the frontend UI
     """
-    query = state.messages[-1]['content']
-    # print(query)
-    if query.startswith("/"):
+
+    if state.query.startswith("/"):
         return "handle_command"
     return "ollama"
 
-from ..common import write_content
+############################################################################
+# NODE
+############################################################################
+def init(state: State, config: RunnableConfig, writer: StreamWriter):
+    write_thought("init")
+
+    query = state.messages[-1]['content']
+
+    return {"query": query}
+
+
+
+from graphs.common import write_content, write_thought
 
 ############################################################################
 # NODE
 ############################################################################
 def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     # extract command
-    query = state.messages[-1]['content']
-    split = query.split(" ")
+    split = state.query.split(" ")
 
     # Remove the slash and take the first word
     command = split[0][1:].lower()
@@ -108,10 +116,6 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 ############################################################################
 def ollama(state: State, config: RunnableConfig):
 
-
-    # llm = get_llm(config)
-    # configurable = Config.from_runnable_config(config)
-
     # If we have a new user query, add it to the messages
     if state.query:
         # Add the user's query to the message history
@@ -152,29 +156,3 @@ def ollama(state: State, config: RunnableConfig):
 
     # Return the updated messages list with the new response
     return {"messages": [assistant_message]}
-
-
-
-
-# def ollama(state: State, config: RunnableConfig):
-#     # llm = get_llm(config)
-#     # configurable = Config.from_runnable_config(config)
-    
-#     llm = ChatOllama(
-#         model="llama3.1:8b",
-#         keep_alive=-1,
-#         # temperature=configurable.temperature / 100,
-#         base_url=OLLAMA_HOST,
-#         stream=True
-#     )
-
-#     response = llm.stream(state.messages)
-    
-#     # Join all chunks into a single response
-#     full_response = "".join(chunk.content for chunk in response)
-#     # Add the assistant's response to the message history
-#     assistant_message = {"role": "assistant", "content": full_response}
-#     state.messages.append(assistant_message)
-    
-#     # Return the updated messages list with the new response
-#     return {"messages": [assistant_message]}
