@@ -43,20 +43,24 @@ def check_for_command(state: State, config: RunnableConfig) -> Literal["handle_c
 # NODE
 ############################################################################
 def init(state: State, config: RunnableConfig, writer: StreamWriter):
-    write_thought("init")
-
     query = state.messages[-1]['content']
-
     return {"query": query}
 
 
 
-from graphs.common import write_content, write_thought
+from graphs.common import answer, think, think_codeblock
 
 ############################################################################
 # NODE
 ############################################################################
 def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
+    configurable = configuration.Configuration.from_runnable_config(config)
+    if configurable.DEBUG == True:
+        # Display configuration as a code block
+        think_codeblock(configurable.__dict__, writer=writer)
+        think('---', writer=writer)
+
+
     # extract command
     split = state.query.split(" ")
 
@@ -66,6 +70,12 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 
     if not command:
         command = ""
+    
+    configurable = configuration.Configuration.from_runnable_config(config)
+    if configurable.DEBUG == True:
+        think(f"Running `{command}` with arguments {arguments}", writer=writer)
+        think('---', writer=writer)
+
 
     # Get command output
     cmd_output = CommandHandler._run(command, arguments)
@@ -73,40 +83,39 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     # Handle the command output based on its properties
     if cmd_output.returnDirect:
         # Return the output directly to the user
-        writer(write_content(cmd_output.cmdOutput))
+        answer(cmd_output.cmdOutput, writer=writer)
+        #TODO: consider building an AssistantMessage and returning that instead so we can update state
         return
 
-    else:
-        # The output should be processed by an LLM before returning to the user
-        writer(write_thought(f"Processing command output with LLM..."))
-        writer(write_thought( '---' ))
-        writer(write_thought( "### command output:" ))
-        writer(write_thought( cmd_output.cmdOutput ))
+    # The output should be processed by an LLM before returning to the user
+    think("Processing command output with LLM...", writer=writer)
+    think('---', writer=writer)
+    think("### command output:", writer=writer)
+    think(cmd_output.cmdOutput, writer=writer)
+    think('---', writer=writer)
 
 
-        # Create prompt for LLM
-        prompt = cmd_output.reinjectionPrompt or "Process this information and provide a helpful response:"
+    # Create prompt for LLM
+    prompt = cmd_output.reinjectionPrompt or "Process this information and provide a helpful response:"
 
-        # Get the LLM
+    # Prepare messages for the LLM
+    messages = [
+        {"role": "system", "content": cmd_output.reinjectionPrompt},
+        {"role": "user", "content": f"{prompt}\n\n{cmd_output.cmdOutput}"}
+    ]
 
-        # Prepare messages for the LLM
-        messages = [
-            {"role": "system", "content": cmd_output.reinjectionPrompt},
-            {"role": "user", "content": f"{prompt}\n\n{cmd_output.cmdOutput}"}
-        ]
+    llm = get_llm(config)
+    response = llm.stream(messages)
 
-        llm = get_llm(config)
-        response = llm.stream(state.messages)
+    # Join all chunks into a single response
+    full_response = "".join(chunk.content for chunk in response)
 
-        # Join all chunks into a single response
-        full_response = "".join(chunk.content for chunk in response)
+    # Add the assistant's response to the message history
+    assistant_message = {"role": "assistant", "content": full_response}
+    state.messages.append(assistant_message)
 
-        # Add the assistant's response to the message history
-        assistant_message = {"role": "assistant", "content": full_response}
-        state.messages.append(assistant_message)
-
-        # Return the updated messages list with the new response
-        return {"messages": [assistant_message]}
+    # Return the updated messages list with the new response
+    return {"messages": [assistant_message]}
 
 
 
@@ -131,13 +140,6 @@ def ollama(state: State, config: RunnableConfig):
         state.messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state.messages
 
 
-
-    print("*"*30)
-    print("GRAPH STATE INSIDE THE NODE")
-    for m in state.messages:
-        print(json.dumps(m, indent=2))
-    print("*"*30)
-
     # Call the LLM with the full conversation history
     llm = get_llm(config)
     response = llm.stream(state.messages)
@@ -148,11 +150,6 @@ def ollama(state: State, config: RunnableConfig):
     # Add the assistant's response to the message history
     assistant_message = {"role": "assistant", "content": full_response}
     state.messages.append(assistant_message)
-
-    print('='*40)
-    print("THE ASSISTANT SAID..")
-    print(assistant_message)
-    print('='*40)
 
     # Return the updated messages list with the new response
     return {"messages": [assistant_message]}

@@ -1,4 +1,7 @@
-"""This 'ollama' graph outlines a LangGraph agent with memory functionality."""
+"""
+This 'ollama' graph outlines a LangGraph agent with memory functionality.
+
+"""
 
 
 ## DEFINE OUR GRAPH, ALONG WITH ITS SCHEMAS
