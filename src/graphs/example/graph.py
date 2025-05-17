@@ -1,6 +1,5 @@
 """This is an example LangGraph agent with the most basic functionality."""
 
-
 ##############################################################
 ### DEFINE GRAPH STATE
 ##############################################################
@@ -20,19 +19,19 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import StreamWriter
 
 from graphs import configuration
-from graphs.common import NodeOutputType, think, answer, think_codeblock
+from graphs.common import NodeOutputType, answer, think_codeblock
 
 
 def echo(state: State, config: RunnableConfig, writer: StreamWriter):
+
     configurable = configuration.Configuration.from_runnable_config(config)
-
     if configurable.DEBUG == True:
-        think_codeblock( configurable.__dict__, writer=writer )
-        think( "Geesh... this guy's an idiot amirite?", writer=writer )
+        # Display configuration as a code block
+        think_codeblock(configurable.__dict__, writer=writer)
 
-    #NOTE: since we aren't using an LLM to generate tokens, we need to use the writer to print to the UI
     echoback = state.messages[-1]['content']
-    answer( echoback, writer=writer )
+    #NOTE: since we aren't using an LLM to generate tokens, we need to use the writer to print to the UI
+    answer(echoback, writer=writer)
 
 
 ##############################################################

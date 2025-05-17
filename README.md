@@ -10,3 +10,24 @@ echo MODELS
 curl -s http://localhost:9000/models | jq
 
 ```
+
+# DEVELOPMENT
+
+### Create python environment
+```
+python3.11 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# LangGraph needs it to be installed locally
+python -m pip install -e .
+```
+
+### Launch LangGraph studio
+
+
+```
+
+langgraph dev --tunnel
+```

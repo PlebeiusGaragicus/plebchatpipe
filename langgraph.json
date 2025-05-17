@@ -1,0 +1,13 @@
+{
+  "dockerfile_lines": [],
+  "graphs": {
+    "echobot": "./src/graphs/echobot/graph.py:graph",
+    "example": "./src/graphs/example/graph.py:graph",
+    "fren": "./src/graphs/fren/graph.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.11",
+  "dependencies": [
+    "readability-lxml"
+  ]
+}

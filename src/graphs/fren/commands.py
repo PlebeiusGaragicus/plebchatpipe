@@ -1,6 +1,6 @@
 from .VERSION import VERSION
 
-from ..commands import CommandHandler as BaseCommandHandler, CommandOutput
+from graphs.commands import CommandHandler as BaseCommandHandler, CommandOutput
 
 class CommandHandler(BaseCommandHandler):
     # This class inherits all methods from BaseCommandHandler
