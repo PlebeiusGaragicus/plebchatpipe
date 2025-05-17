@@ -130,7 +130,7 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
         ]
 
         llm = get_llm(config)
-        response = llm.stream(state.messages)
+        response = llm.stream(messages)
 
         # Join all chunks into a single response
         full_response = "".join(chunk.content for chunk in response)

@@ -10,7 +10,7 @@ from langgraph.types import StreamWriter
 from graphs import configuration
 from graphs.fren.state import State, SYSTEM_PROMPT
 from graphs.fren.commands import CommandHandler
-
+from graphs.common import answer, think, think_codeblock
 
 ############################################################################
 # HELPER FUNCTIONS
@@ -39,6 +39,7 @@ def check_for_command(state: State, config: RunnableConfig) -> Literal["handle_c
         return "handle_command"
     return "ollama"
 
+
 ############################################################################
 # NODE
 ############################################################################
@@ -46,9 +47,6 @@ def init(state: State, config: RunnableConfig, writer: StreamWriter):
     query = state.messages[-1]['content']
     return {"query": query}
 
-
-
-from graphs.common import answer, think, think_codeblock
 
 ############################################################################
 # NODE
@@ -116,8 +114,6 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 
     # Return the updated messages list with the new response
     return {"messages": [assistant_message]}
-
-
 
 
 ############################################################################
