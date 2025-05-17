@@ -106,7 +106,7 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     # Handle the command output based on its properties
     if cmd_output.returnDirect:
         # Return the output directly to the user
-        writer(write_content(cmd_output.cmdOutput))
+        answer(cmd_output.cmdOutput, writer=writer)
         return
 
     else:
@@ -115,6 +115,7 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
         think( '---', writer=writer )
         think( "### command output:", writer=writer )
         think( cmd_output.cmdOutput, writer=writer )
+        think( '---', writer=writer )
 
 
         # Create prompt for LLM

@@ -192,6 +192,165 @@ For detailed help on a specific command, type `/help command_name`
             return CommandOutput(cmdOutput=error_msg)
 
 
+    @classmethod
+    def summarize(cls, args: list[str] = None):
+        """Extract and summarize the main content from a website URL.
+
+        Usage: /summarize https://example.com
+        Scrapes the content from the provided URL and generates a concise summary.
+        This allows you to quickly understand the key points from web content.
+        """
+        # Get the URL content using the base url command
+        url_result = cls.url(args)
+
+        # Create a reinjection prompt for summarization
+        reinjection_prompt = f"""
+You are a helpful AI assistant that summarizes web content.
+
+Please provide a concise summary that includes:
+1. The main topic or purpose of the page
+2. Key points and important information
+3. Any relevant conclusions or takeaways
+
+Format your response in a clear, well-structured way using markdown formatting.
+"""
+
+        return CommandOutput(
+            cmdOutput=url_result.cmdOutput,
+            returnDirect=False,  # Process through LLM
+            reinjectionPrompt=reinjection_prompt
+        )
+
+
+
+    @classmethod
+    def yt(cls, args: list[str] = None):
+        """
+yt - get youtube transcript
+
+Extract and provide the transcript from a YouTube video.
+
+Usage: /yt https://www.youtube.com/watch?v=example
+Retrieves the transcript from the provided YouTube URL along with video details.
+"""
+        import asyncio
+        from langchain_community.document_loaders import YoutubeLoader
+        from langchain_yt_dlp.youtube_loader import YoutubeLoaderDL
+
+        if not args or len(args) == 0:
+            return CommandOutput(
+                cmdOutput="Error: Please provide a YouTube URL",
+                returnDirect=True
+            )
+
+        url = args[0]
+        
+        # Define an async function to handle the YouTube API calls
+        async def get_transcript_async(url):
+            try:
+                # Check if the URL is valid
+                if not url or url == "":
+                    raise Exception(f"Invalid YouTube URL: {url}")
+                # LLM's love passing in this url when the user doesn't provide one
+                elif "dQw4w9WgXcQ" in url:
+                    raise Exception("Rick Roll URL provided... is that what you want?).")
+
+                # Get video details
+                title = ""
+                author = ""
+                details = await YoutubeLoaderDL.from_youtube_url(url, add_video_info=True).aload()
+
+                if len(details) == 0:
+                    raise Exception("Failed to get video details")
+
+                title = details[0].metadata["title"]
+                author = details[0].metadata["author"]
+
+                # Hardcode language values
+                languages = ["en", "en_auto"]
+
+                # Try to get transcript using direct API as a more reliable method
+                try:
+                    from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
+                    
+                    # Extract video ID from URL
+                    import re
+                    video_id = None
+                    if "youtube.com" in url:
+                        video_id = re.search(r'v=([\w-]+)', url)
+                        if video_id:
+                            video_id = video_id.group(1)
+                    elif "youtu.be" in url:
+                        video_id = url.split('/')[-1].split('?')[0]
+                    
+                    if not video_id:
+                        raise Exception(f"Could not extract video ID from URL: {url}")
+                    
+                    # Get transcript using direct API
+                    transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                    
+                    # Try to find English transcript first
+                    try:
+                        transcript_data = transcript_list.find_transcript(['en'])
+                    except Exception:
+                        # If no English transcript, get the first available and translate it
+                        # Get the first available transcript
+                        transcript_data = next(transcript_list._transcripts.values().__iter__())
+                        transcript_data = transcript_data.translate('en')
+                    
+                    transcript_parts = transcript_data.fetch()
+                    
+                    # Format transcript with timestamps
+                    transcript_lines = []
+                    for part in transcript_parts:
+                        minutes = int(part['start'] // 60)
+                        seconds = int(part['start'] % 60)
+                        timestamp = f"[{minutes:02d}:{seconds:02d}] "
+                        transcript_lines.append(f"{timestamp}{part['text']}")
+                    
+                    transcript_text = "\n".join(transcript_lines)
+                    
+                except (TranscriptsDisabled, Exception) as e:
+                    # Fallback to LangChain method if direct API fails
+                    transcript = await YoutubeLoader.from_youtube_url(
+                        url,
+                        add_video_info=False,
+                        language=languages,
+                        translation="en",
+                    ).aload()
+
+                    if len(transcript) == 0:
+                        raise Exception(f"Failed to find transcript for {title if title else url}")
+
+                    # Format transcript
+                    transcript_text = "\n".join([document.page_content for document in transcript])
+
+                if title and author:
+                    transcript_text = f"# {title}\n\n### by {author}\n\n{transcript_text}"
+
+                return transcript_text
+
+            except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                return f"Error: {str(e)}\n\nDetails:\n```\n{error_details}\n```"
+
+        try:
+            transcript_result = asyncio.run(get_transcript_async(url))
+            
+            return CommandOutput(
+                cmdOutput=transcript_result,
+                returnDirect=True
+            )
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            error_message = f"Error running async function: {str(e)}\n\nDetails:\n```\n{error_details}\n```"
+            return CommandOutput(
+                cmdOutput=error_message,
+                returnDirect=True
+            )
+
 
 
 ####################################################################################
