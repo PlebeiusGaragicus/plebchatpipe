@@ -14,6 +14,7 @@ langchain-openai
 langchain_ollama
 langchain_yt_dlp
 trustcall
+tiktoken
 
 # TODO: REMOVE THIS FOR PRODUCTION - IT'S FOR LANGGRAPH STUDIO
 langgraph-cli[inmem]

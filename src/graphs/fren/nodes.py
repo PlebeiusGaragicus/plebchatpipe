@@ -1,5 +1,6 @@
 import json
 from typing import Literal
+import tiktoken
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import HumanMessage
@@ -54,8 +55,31 @@ def init(state: State, config: RunnableConfig, writer: StreamWriter):
         think_codeblock( state, writer=writer )
         think('---', writer=writer)
 
-    query = state.messages[-1]['content']
-    return {"query": query}
+    # calculate tokens of state.messages using a proper tokenizer
+    try:
+        # Try to use tiktoken for accurate token counting (works well for OpenAI models)
+        # For Llama models this is an approximation but better than character counting
+        enc = tiktoken.get_encoding("cl100k_base")  # cl100k_base is used by gpt-4/3.5-turbo
+        total_tokens = 0
+        for message in state.messages:
+            # Count tokens in the message content
+            if 'content' in message and message['content']:
+                total_tokens += len(enc.encode(message['content']))
+            # Also count tokens in the role (small overhead per message)
+            if 'role' in message and message['role']:
+                total_tokens += len(enc.encode(message['role']))
+
+        if configurable.DEBUG:
+            think(f"Total tokens in conversation: {total_tokens}/{32768} = `{total_tokens / 32768 * 100:0.2f}%`", writer=writer)
+    except Exception as e:
+        # Fallback to a simpler estimation if tiktoken is not available
+        if configurable.DEBUG:
+            think(f"Error calculating tokens: {str(e)}", writer=writer)
+        total_tokens = sum(len(m.get('content', '')) // 4 for m in state.messages)  # Rough estimate: ~4 chars per token
+
+    # query = state.messages[-1]['content']
+    # return {"query": query}
+    return {}
 
 
 ############################################################################
@@ -82,11 +106,6 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 
     # Handle the command output based on its properties
     if cmd_output.returnDirect:
-        
-        print()
-        print("DEBUG: Command output type:", type(cmd_output))
-        print("DEBUG: Command output content:", cmd_output.cmdOutput)
-
         # Access the cmdOutput property of the CommandOutput object
         output_content = cmd_output.cmdOutput
         answer(output_content, writer=writer)
