@@ -18,7 +18,7 @@ class NodeOutputType(str, Enum):
 def write_thought(content: str):
     return {
         'type': 'thought',
-        'content': f"{content}\n"
+        'content': content
     }
 
 def write_content(content: str):
@@ -28,10 +28,10 @@ def write_content(content: str):
     }
 
 def answer(content, writer: Callable):
-    writer( write_content( f"\n{content}\n" ) )
+    writer( write_content( content ) )
 
 def think(content, writer: Callable):
-    writer( write_thought( f"\n{content}\n" ) )
+    writer( write_thought( content ) )
 
 def json_serializable(obj):
     """Convert an object to a JSON serializable format.
@@ -57,4 +57,4 @@ def think_codeblock(content, writer: Callable):
     serializable_content = json_serializable(content)
     
     # Format as JSON and display in a code block
-    writer(write_thought(f"\n```json\n{json.dumps(serializable_content, indent=2)}\n```\n"))
+    writer(write_thought(f"```json\n{json.dumps(serializable_content, indent=2)}\n```"))

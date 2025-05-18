@@ -182,7 +182,7 @@ async def stream(graph_id: str, request: GraphRequest):
                         await asyncio.sleep(0)  # Force flush
 
                     if hasattr(reply_content, 'content') and reply_content.content:
-                        # print(reply_content.content) #  show tokens as they stream
+                        print(reply_content.content) # show tokens as they stream
 
                         if 'node_output_type' in metadata and metadata['node_output_type'] == NodeOutputType.THOUGHT:
                             content_msg = thinking_tokens(reply_content.content)

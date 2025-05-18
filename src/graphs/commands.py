@@ -33,7 +33,14 @@ class CommandHandler:
         # commands starting in '_' can't be called (like this one, '_run()')
         if callable(method) and not command.startswith('_'):
             # If method exists and is callable, invoke it
-            return method(arguments)
+            result = method(arguments)
+            
+            # Check if the result is already a CommandOutput object
+            if isinstance(result, CommandOutput):
+                return result  # Return it directly
+            else:
+                # Otherwise, wrap it in a CommandOutput object
+                return CommandOutput(cmdOutput=result)
         else:
             # Get the help command output
             help_output = cls.help()
@@ -238,10 +245,7 @@ Retrieves the transcript from the provided YouTube URL along with video details.
         from langchain_yt_dlp.youtube_loader import YoutubeLoaderDL
 
         if not args or len(args) == 0:
-            return CommandOutput(
-                cmdOutput="Error: Please provide a YouTube URL",
-                returnDirect=True
-            )
+            return CommandOutput(cmdOutput="Error: Please provide a YouTube URL")
 
         url = args[0]
         
@@ -307,9 +311,9 @@ Retrieves the transcript from the provided YouTube URL along with video details.
                         seconds = int(part['start'] % 60)
                         timestamp = f"[{minutes:02d}:{seconds:02d}] "
                         transcript_lines.append(f"{timestamp}{part['text']}")
-                    
+
                     transcript_text = "\n".join(transcript_lines)
-                    
+
                 except (TranscriptsDisabled, Exception) as e:
                     # Fallback to LangChain method if direct API fails
                     transcript = await YoutubeLoader.from_youtube_url(
@@ -340,7 +344,7 @@ Retrieves the transcript from the provided YouTube URL along with video details.
             
             return CommandOutput(
                 cmdOutput=transcript_result,
-                returnDirect=True
+                returnDirect=True  # Return the raw transcript directly to the user
             )
         except Exception as e:
             import traceback
@@ -348,8 +352,106 @@ Retrieves the transcript from the provided YouTube URL along with video details.
             error_message = f"Error running async function: {str(e)}\n\nDetails:\n```\n{error_details}\n```"
             return CommandOutput(
                 cmdOutput=error_message,
-                returnDirect=True
+                returnDirect=True  # Return errors directly to the user
             )
+
+
+    @classmethod
+    def yoot(cls, args: list[str] = None):
+        """
+yt - get youtube transcript
+
+Extract and provide the transcript from a YouTube video.
+
+Usage: /yt https://www.youtube.com/watch?v=example
+Retrieves the transcript from the provided YouTube URL along with video details.
+"""
+        from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
+
+        if not args or len(args) == 0:
+            return CommandOutput(cmdOutput="Error: Please provide a YouTube URL")
+
+        url = args[0]
+
+        try:
+            # Check if the URL is valid
+            if not url or url == "":
+                raise Exception(f"Invalid YouTube URL: {url}")
+            # LLM's love passing in this url when the user doesn't provide one
+            elif "dQw4w9WgXcQ" in url:
+                raise Exception("Rick Roll URL provided... is that what you want?).")
+
+            # Extract video ID from URL
+            import re
+            video_id = None
+            if "youtube.com" in url:
+                video_id = re.search(r'v=([\w-]+)', url)
+                if video_id:
+                    video_id = video_id.group(1)
+            elif "youtu.be" in url:
+                video_id = url.split('/')[-1].split('?')[0]
+
+            if not video_id:
+                raise Exception(f"Could not extract video ID from URL: {url}")
+
+            # Get video details using YouTube API
+            import requests
+            api_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+            response = requests.get(api_url)
+            video_info = response.json()
+            title = video_info.get('title', 'Unknown Title')
+            author = video_info.get('author_name', 'Unknown Author')
+
+            # Get transcript using direct API
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            # Try to find English transcript first
+            try:
+                transcript_data = transcript_list.find_transcript(['en'])
+            except Exception:
+                # If no English transcript, get the first available and translate it
+                transcript_data = next(transcript_list._transcripts.values().__iter__())
+                transcript_data = transcript_data.translate('en')
+            
+            transcript_parts = transcript_data.fetch()
+            
+            # Format transcript with timestamps
+            transcript_lines = []
+            for part in transcript_parts:
+                # Access attributes correctly based on the object type
+                try:
+                    # Try accessing as dictionary first
+                    start_time = part['start'] if isinstance(part, dict) else part.start
+                    text = part['text'] if isinstance(part, dict) else part.text
+                    
+                    minutes = int(start_time // 60)
+                    seconds = int(start_time % 60)
+                    timestamp = f"[{minutes:02d}:{seconds:02d}] "
+                    transcript_lines.append(f"{timestamp}{text}")
+                except Exception as e:
+                    # If there's an error, just add the string representation of the part
+                    transcript_lines.append(str(part))
+
+            transcript_text = "\n".join(transcript_lines)
+            
+            # Format the final output with title and author
+            result = f"# {title}\n\n### by {author}\n\n{transcript_text}"
+            
+            return CommandOutput(cmdOutput=result, returnDirect=True)
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            error_message = f"Error: {str(e)}\n\nDetails:\n```\n{error_details}\n```"
+            return CommandOutput(cmdOutput=error_message, returnDirect=True)
+
+
+    @classmethod
+    def riddle(cls, args: list[str] = None):
+        """
+A simple riddle
+"""
+        return CommandOutput(cmdOutput="what have i got in my pocket?")
 
 
 

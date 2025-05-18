@@ -107,7 +107,13 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     if cmd_output.returnDirect:
         # Return the output directly to the user
         answer(cmd_output.cmdOutput, writer=writer)
-        return
+        
+        # Add the command output to the message history so the conversation remembers it
+        assistant_message = {"role": "assistant", "content": cmd_output.cmdOutput}
+        state.messages.append(assistant_message)
+        
+        # Return the updated state
+        return {"messages": [assistant_message]}
 
     else:
         # The output should be processed by an LLM before returning to the user

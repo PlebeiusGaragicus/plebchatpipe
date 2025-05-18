@@ -19,9 +19,12 @@ def get_llm(config: RunnableConfig):
     configurable = configuration.Configuration.from_runnable_config(config)
 
     return ChatOllama(
-        model=configurable.OLLAMA_LLM_CHATMODEL,
+        # model=configurable.OLLAMA_LLM_CHATMODEL,
+        model="llama3.2:3b-instruct-q8_0",
         keep_alive=configurable.OLLAMA_KEEP_ALIVE,
-        base_url=configurable.OLLAMA_BASE_URL
+        base_url=configurable.OLLAMA_BASE_URL,
+        # num_ctx=131072 # FULL CONTEXT FOR LLAMA3.2 # 42GB of VRAM FOR KV CACHE!!!
+        num_ctx=32768 # 1/4 context - 15GB KV CACHE
     )
 
 
@@ -44,6 +47,13 @@ def check_for_command(state: State, config: RunnableConfig) -> Literal["handle_c
 # NODE
 ############################################################################
 def init(state: State, config: RunnableConfig, writer: StreamWriter):
+    configurable = configuration.Configuration.from_runnable_config(config)
+    if configurable.DEBUG:
+        # Display configuration as a code block
+        think_codeblock( configurable.__dict__, writer=writer )
+        think_codeblock( state, writer=writer )
+        think('---', writer=writer)
+
     query = state.messages[-1]['content']
     return {"query": query}
 
@@ -52,13 +62,6 @@ def init(state: State, config: RunnableConfig, writer: StreamWriter):
 # NODE
 ############################################################################
 def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
-    configurable = configuration.Configuration.from_runnable_config(config)
-    if configurable.DEBUG == True:
-        # Display configuration as a code block
-        think_codeblock(configurable.__dict__, writer=writer)
-        think('---', writer=writer)
-
-
     # extract command
     split = state.query.split(" ")
 
@@ -68,22 +71,30 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 
     if not command:
         command = ""
-    
+
     configurable = configuration.Configuration.from_runnable_config(config)
     if configurable.DEBUG == True:
         think(f"Running `{command}` with arguments {arguments}", writer=writer)
         think('---', writer=writer)
-
 
     # Get command output
     cmd_output = CommandHandler._run(command, arguments)
 
     # Handle the command output based on its properties
     if cmd_output.returnDirect:
-        # Return the output directly to the user
-        answer(cmd_output.cmdOutput, writer=writer)
-        #TODO: consider building an AssistantMessage and returning that instead so we can update state
+        
+        print()
+        print("DEBUG: Command output type:", type(cmd_output))
+        print("DEBUG: Command output content:", cmd_output.cmdOutput)
+
+        # Access the cmdOutput property of the CommandOutput object
+        output_content = cmd_output.cmdOutput
+        answer(output_content, writer=writer)
         return
+
+        # assistant_message = {"role": "assistant", "content": cmd_output.cmdOutput}
+        # state.messages.append(assistant_message)
+        # return {"messages": [assistant_message]}
 
     # The output should be processed by an LLM before returning to the user
     think("Processing command output with LLM...", writer=writer)
@@ -119,22 +130,23 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 ############################################################################
 # NODE
 ############################################################################
-def ollama(state: State, config: RunnableConfig):
+def ollama(state: State, config: RunnableConfig, writer: StreamWriter):
 
     # If we have a new user query, add it to the messages
-    if state.query:
-        # Add the user's query to the message history
-        user_message = {"role": "user", "content": state.query}
-        # Ensure we're not duplicating the message if it's already in the state
-        if not state.messages or state.messages[-1] != user_message:
-            state.messages.append(user_message)
+    # if state.query:
+    #     # Add the user's query to the message history
+    #     user_message = {"role": "user", "content": state.query}
+    #     # Ensure we're not duplicating the message if it's already in the state
+    #     if not state.messages or state.messages[-1] != user_message:
+    #         state.messages.append(user_message)
 
     # Add system prompt to messages if it's not already there
-    # Check if the first message is a system message
-    if not state.messages or state.messages[0].get("role") != "system":
-        # Prepend system prompt to messages
+    if state.messages[0].get("role") != "system":
         state.messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state.messages
 
+    print( "#"* 40)
+    print( state.messages )
+    # think( state.messages, writer=writer )
 
     # Call the LLM with the full conversation history
     llm = get_llm(config)

@@ -192,7 +192,7 @@ class Pipeline:
                 json=data,
                 headers=headers,
                 stream=True,
-                timeout=10.0  # 5 seconds timeout for connection attempt
+                timeout=13.0
             )
             response.raise_for_status()
             return response.iter_lines()
