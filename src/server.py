@@ -113,6 +113,7 @@ async def stream(graph_id: str, request: GraphRequest):
     # Since the field names in request.config already match what Configuration expects,
     # we can just wrap it in the "configurable" key
     config = {"configurable": request.config}
+    # config['checkpoint_id'] = config['checkpoint_ns']
     print(f"Config recieved inside FastAPI: {config}")
 
 
@@ -152,11 +153,12 @@ async def stream(graph_id: str, request: GraphRequest):
             for event, data in agent.stream(input=input_state, config=config, stream_mode=["messages", "custom", "updates"]):
 
                 if event == "updates":
+                    pass
                     # we will just pretty print the state for debugging
-                    print('$'*30)
-                    print("!!! STATE UPDATE !!!")
-                    print(json.dumps(data, indent=2))
-                    print('$'*30)
+                    # print('$'*30)
+                    # print("!!! STATE UPDATE !!!")
+                    # print(json.dumps(data, indent=2))
+                    # print('$'*30)
 
                 if event == "custom":
                     content_type = data['type']

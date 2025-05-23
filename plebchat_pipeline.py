@@ -62,6 +62,11 @@ def error_generator(e, server_url):
     yield f"data: {json.dumps(stream_end)}\n\n"
 
 
+def generate_title():
+    # yield f"data: rabbit\n\n"
+    yield "Ribbit"
+    #TODO: This doesn't work!!
+
 class Pipeline:
     class Valves(BaseModel):
         DEBUG: bool = Field(default=True, description='run pipe in debug mode?')
@@ -144,9 +149,23 @@ class Pipeline:
         self, 
         user_message: str, 
         model_id: str, 
-        messages: List[dict], 
+        messages: List[dict],
         body: dict
+        # __metadata__: Optional[dict] = None
             ) -> Union[str, Generator, Iterator]:
+
+        # if body.get("metadata", None):
+        #     __metadata__ = body.get("metadata", None)
+
+        # if __metadata__:
+        print("asdf"*12)
+        print(self.metadata.get('task', None))
+        if self.metadata.get('task', None) == 'title_generation':
+            print("TITLE GEN TITLE GEN -----------------------------------------")
+            return generate_title()
+        # TODO: also do this for tag generation
+
+
 
         # print("*"*30)
         # print(f"chat_id: {self.chat_id}")
@@ -157,25 +176,31 @@ class Pipeline:
         # print("*"*30)
         # print(model_id)
         print("*"*30)
-        print("MESSAGES")
-        print(json.dumps(messages, indent=2))
-        print("*"*30)
-        print(body)
-        print("*"*30)
-        print("thread_id:")
-        print(self.thread_id)
-        print("*"*30)
-        print("metadata:")
+        print("__metadata__")
         print(json.dumps(self.metadata, indent=2))
-        print("*"*30)
+        # print("*"*30)
+        # print("MESSAGES")
+        # print(json.dumps(messages, indent=2))
+        # print("*"*30)
+        # print(body)
+        # print("*"*30)
+        # print("thread_id:")
+        # print(self.thread_id)
+        # print("*"*30)
+        # print("metadata:")
+        # print(json.dumps(self.metadata, indent=2))
+        # print("*"*30)
 
         data = {
             "query": user_message,  # Include the original user query
             "messages": messages,
             "config": self.valves.model_dump()  # Include all valve settings as config
         }
+        # TODO: https://openwebui.com/f/codysandahl/pipeline_enriched_with_metadata
+        data["metadata"] = self.metadata
 
         data['config']['thread_id'] = self.thread_id
+        data['config']['message_id'] = self.metadata.get('message_id', None)
         print("*"*30)
         print("THIS IS THE FINAL VERSION OF THE DATA PAYLOAD THAT WILL BE SENT")
         print(json.dumps(data, indent=2))

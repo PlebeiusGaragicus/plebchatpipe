@@ -4,6 +4,8 @@ import os
 from typing import Optional, Any
 from dataclasses import dataclass, fields
 
+from langchain_ollama import ChatOllama
+
 from langchain_core.runnables import RunnableConfig
 
 @dataclass(kw_only=True)
@@ -64,3 +66,21 @@ class Configuration:
                 setattr(instance, key, value)
                 
         return instance
+
+
+
+############################################################################
+# HELPER FUNCTIONS
+############################################################################
+def get_llm(config: RunnableConfig):
+    configurable: Configuration = Configuration.from_runnable_config(config)
+
+    return ChatOllama(
+        # model=configurable.OLLAMA_LLM_CHATMODEL,
+        model="llama3.2:3b-instruct-q8_0",
+        keep_alive=configurable.OLLAMA_KEEP_ALIVE,
+        base_url=configurable.OLLAMA_BASE_URL,
+        # num_ctx=131072 # FULL CONTEXT FOR LLAMA3.2 # 42GB of VRAM FOR KV CACHE!!!
+        num_ctx=32768 # 1/4 context - 15GB KV CACHE
+        # num_ctx=16384 # 1/8 context - 15GB KV CACHE
+    )

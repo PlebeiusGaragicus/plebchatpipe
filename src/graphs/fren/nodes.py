@@ -12,21 +12,9 @@ from graphs import configuration
 from graphs.fren.state import State, SYSTEM_PROMPT
 from graphs.fren.commands import CommandHandler
 from graphs.common import answer, think, think_codeblock
+from graphs.configuration import get_llm
 
-############################################################################
-# HELPER FUNCTIONS
-############################################################################
-def get_llm(config: RunnableConfig):
-    configurable = configuration.Configuration.from_runnable_config(config)
 
-    return ChatOllama(
-        # model=configurable.OLLAMA_LLM_CHATMODEL,
-        model="llama3.2:3b-instruct-q8_0",
-        keep_alive=configurable.OLLAMA_KEEP_ALIVE,
-        base_url=configurable.OLLAMA_BASE_URL,
-        # num_ctx=131072 # FULL CONTEXT FOR LLAMA3.2 # 42GB of VRAM FOR KV CACHE!!!
-        num_ctx=32768 # 1/4 context - 15GB KV CACHE
-    )
 
 
 ############################################################################
@@ -55,6 +43,10 @@ def init(state: State, config: RunnableConfig, writer: StreamWriter):
         think_codeblock( state, writer=writer )
         think('---', writer=writer)
 
+
+    return {}
+
+    #NOTE: skip this for now... turn it into a /command #TODO - it's just too slow to run every time
     # calculate tokens of state.messages using a proper tokenizer
     try:
         # Try to use tiktoken for accurate token counting (works well for OpenAI models)
@@ -166,16 +158,30 @@ def ollama(state: State, config: RunnableConfig, writer: StreamWriter):
     print( "#"* 40)
     print( state.messages )
     # think( state.messages, writer=writer )
+    configurable = configuration.Configuration.from_runnable_config(config)
+    think(f"message_id: `{configurable.message_id}`\n\n---\n", writer=writer)
 
     # Call the LLM with the full conversation history
     llm = get_llm(config)
-    response = llm.stream(state.messages)
 
-    # Join all chunks into a single response
-    full_response = "".join(chunk.content for chunk in response)
+    # Modified to capture full response with metadata
+    full_response_content = ""
+    full_response = None
+    for chunk in llm.stream(state.messages):
+        full_response_content += chunk.content
+        full_response = chunk  # Keep the last chunk which should have metadata
+
+    # After streaming completes, you can access metadata
+    if full_response and hasattr(full_response, 'response_metadata'):
+        tokens_generated = full_response.response_metadata.get('eval_count', 0)
+        generation_time_ns = full_response.response_metadata.get('eval_duration', 0)
+        tokens_per_second = tokens_generated / (generation_time_ns / 1_000_000_000) if generation_time_ns else 0
+
+        # Log or use the tokens per second information
+        print(f"Tokens per second: {tokens_per_second:.2f}")
 
     # Add the assistant's response to the message history
-    assistant_message = {"role": "assistant", "content": full_response}
+    assistant_message = {"role": "assistant", "content": full_response_content}
     state.messages.append(assistant_message)
 
     # Return the updated messages list with the new response
