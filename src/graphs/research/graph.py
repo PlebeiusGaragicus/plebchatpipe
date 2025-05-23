@@ -1,30 +1,22 @@
-"""This research graph outlines a LangGraph agent for web research."""
+"""
+This research graph outlines a LangGraph agent for web research.
 
+"""
 
 import operator
 from typing import Optional, Annotated, List, Dict, Any
 from pydantic import BaseModel, Field
 
-
-
-import json
-import logging
-from typing import Dict, Any, List, Optional
-
-
+from langgraph.graph import StateGraph, START, END
+from langgraph.types import StreamWriter
 from langchain_core.runnables import RunnableConfig
 from langchain_ollama import ChatOllama
-from langgraph.graph.state import StateGraph
-from langgraph.types import StreamWriter
 
-from ..config import Config
-from ..common import write_content, write_thought, NodeOutputType
+from graphs import configuration
+from graphs.commands import CommandHandler
+from graphs.common import NodeOutputType, answer, think, think_codeblock
 
-from .commands import CommandHandler
 
-# Configure logging
-logging.basicConfig(level=logging.INFO) 
-logger = logging.getLogger(__name__)
 
 
 ############################################################################
@@ -84,12 +76,12 @@ def _check_for_command(state: State, config: RunnableConfig, writer: StreamWrite
     # print(query)
 
     if query.startswith("/"):
-        writer( write_thought(f">> I found a command! `{query}`") )
-        writer(write_thought( '\n---\n' ))
+        think(f">> I found a command! `{query}`", writer=writer)
+        think( '\n---\n', writer=writer )
         return "handle_command"
 
-    writer( write_thought(">> no command... continue") )
-    writer( write_thought( '\n---\n' ) )
+    think(">> no command... continue", writer=writer)
+    think( '\n---\n', writer=writer )
     return "router"
 
 
@@ -114,15 +106,22 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
     # Handle the command output based on its properties
     if cmd_output.returnDirect:
         # Return the output directly to the user
-        writer(write_content(cmd_output.cmdOutput))
-        return
+        answer(cmd_output.cmdOutput, writer=writer)
+        
+        # Add the command output to the message history so the conversation remembers it
+        assistant_message = {"role": "assistant", "content": cmd_output.cmdOutput}
+        state.messages.append(assistant_message)
+        
+        # Return the updated state
+        return {"messages": [assistant_message]}
 
     else:
         # The output should be processed by an LLM before returning to the user
-        writer(write_thought(f"Processing command output with LLM..."))
-        writer(write_thought( '---' ))
-        writer(write_thought( "### command output:" ))
-        writer(write_thought( cmd_output.cmdOutput ))
+        think(f"Processing command output with LLM...", writer=writer)
+        think( '---', writer=writer )
+        think( "### command output:", writer=writer )
+        think( cmd_output.cmdOutput, writer=writer )
+        think( '---', writer=writer )
 
 
         # Create prompt for LLM
@@ -137,7 +136,7 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
         ]
 
         llm = get_llm(config)
-        response = llm.stream(state.messages)
+        response = llm.stream(messages)
 
         # Join all chunks into a single response
         full_response = "".join(chunk.content for chunk in response)
@@ -156,73 +155,24 @@ def handle_command(state: State, config: RunnableConfig, writer: StreamWriter):
 ############################################################################
 def router(state: State, config: RunnableConfig, writer: StreamWriter):
 
-    writer( write_thought("nothing") )
+    think("nothing", writer=writer)
 
 
     # check if the last message was from the 'assistant' - if so, this convo was continued.  If not, this convo is NEW
     if state.messages[-1].get("role", None) == 'assistant':
-        print(">>>>> NEW CONVO DETECTED")
-        writer( write_thought(">>>>> NEW CONVO DETECTED") )
+        answer("NEW CONVO DETECTED", writer=writer)
         return "search"
     else:
-        print(">>>>> CONVO IS BEING CONTINUED")
-        writer( write_thought(">>>>> CONVO IS BEING CONTINUED") )
-
-
-    # # If we have a new user query, add it to the messages
-    # if state.query:
-    #     # Add the user's query to the message history
-    #     user_message = {"role": "user", "content": state.query}
-    #     # Ensure we're not duplicating the message if it's already in the state
-    #     if not state.messages or state.messages[-1] != user_message:
-    #         state.messages.append(user_message)
-
-    # # Add system prompt to messages if it's not already there
-    # # Check if the first message is a system message
-    # if not state.messages or state.messages[0].get("role") != "system":
-    #     # Prepend system prompt to messages
-    #     state.messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state.messages
-
-
-
-    # print("*"*30)
-    # print("GRAPH STATE INSIDE THE NODE")
-    # for m in state.messages:
-    #     print(json.dumps(m, indent=2))
-    # print("*"*30)
-
-    # writer( write_content("nothing") )
-
-
-    # KEEP ALL THIS
-    # # Call the LLM with the full conversation history
-    # llm = get_llm(config)
-    # response = llm.stream(state.messages)
-
-    # # Join all chunks into a single response
-    # full_response = "".join(chunk.content for chunk in response)
-
-    # # Add the assistant's response to the message history
-    # assistant_message = {"role": "assistant", "content": full_response}
-    # state.messages.append(assistant_message)
-
-    # print('='*40)
-    # print("THE ASSISTANT SAID..")
-    # print(assistant_message)
-    # print('='*40)
-
-    # # Return the updated messages list with the new response
-    # return {"messages": [assistant_message]}
+        answer("CONVO IS BEING CONTINUED", writer=writer)
 
 
 
 
 
 
-from ..config import Config
-graph_builder = StateGraph(State, input=State, config_schema=Config)
+graph_builder = StateGraph(State, input=State, config_schema=configuration.Configuration)
 
-graph_builder.add_conditional_edges("__start__", _check_for_command)
+graph_builder.add_conditional_edges(START, _check_for_command)
 # We route to either of these...
 graph_builder.add_node("handle_command", handle_command)
 graph_builder.add_node("router", router, metadata={"node_output_type": NodeOutputType.THOUGHT})
@@ -230,7 +180,7 @@ graph_builder.add_node("router", router, metadata={"node_output_type": NodeOutpu
 
 
 # __end__
-graph_builder.add_edge("handle_command", "__end__")
-graph_builder.add_edge("router", "__end__")
+graph_builder.add_edge("handle_command", END)
+graph_builder.add_edge("router", END)
 
 graph = graph_builder.compile()

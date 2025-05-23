@@ -3,18 +3,34 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 pydantic>=2.0.0
 
-# LangGraph and LangChain dependencies
 langgraph
+langgraph-prebuilt
+langgraph-sdk
+langgraph-checkpoint-sqlite
+langsmith
+langchain-community
 langchain-core
-langchain-ollama
-langchain_openai
+langchain-openai
+langchain_ollama
+langchain_yt_dlp
+trustcall
+tiktoken
 
-# Type hints and extensions
-typing-extensions>=4.8.0
+# TODO: REMOVE THIS FOR PRODUCTION - IT'S FOR LANGGRAPH STUDIO
+langgraph-cli[inmem]
 
+
+notebook
+tavily-python
+wikipedia
 readability-lxml
 requests
 html2text
+youtube_transcript_api
+
+# Type hints and extensions
+typing-extensions
+
 
 # Development and hot-reloading
-watchfiles>=0.20.0
+# watchfiles>=0.20.0

@@ -2,13 +2,31 @@ import json
 import asyncio
 import traceback
 from pydantic import BaseModel, Field
-from typing import Annotated, List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 from graphs.common import NodeOutputType
-from helpers import content_tokens, newlines, thinking_tokens, thinking_newline, emit_event
+
+
+
+def thinking_tokens(tokens: str):
+    return {'choices': [{'delta':{'reasoning_content': tokens, },'finish_reason': None}]}
+
+def thinking_newline():
+    return {'choices': [{'delta':{'reasoning_content': "\n\n",},'finish_reason': None}]}
+
+def content_tokens(tokens: str):
+    return {'choices': [{'delta':{'content': tokens, },'finish_reason': None}]}
+
+def content_newline():
+    return {'choices': [{'delta':{'content': "\n\n",},'finish_reason': None}]}
+
+def emit_event(description: str, done: bool):
+    event = {"event": {"type": "status","data": {"description": description,"done": done,},}}
+    return f"data: {json.dumps(event)}\n\n"
+
 
 
 # Define Pydantic models for request validation
@@ -67,7 +85,6 @@ async def get_models():
         return {"error": f"Failed to fetch Ollama models: {str(e)}"}
 
 
-
 @app.post("/graph/{graph_id}")
 async def stream(graph_id: str, request: GraphRequest):
 
@@ -83,7 +100,7 @@ async def stream(graph_id: str, request: GraphRequest):
     
     print(f"REQUEST TYPE: {'TOOL SELECTION' if is_tool_selection else 'REGULAR CHAT'}")
     print("*"*30)
-    
+
     print(f"MESSAGES:")
     for m in request.messages:
         print(json.dumps(m, indent=2))
@@ -92,6 +109,12 @@ async def stream(graph_id: str, request: GraphRequest):
     if request.query:
         print(f"Query: {request.query}")
     print("*"*30)
+
+    # Since the field names in request.config already match what Configuration expects,
+    # we can just wrap it in the "configurable" key
+    config = {"configurable": request.config}
+    # config['checkpoint_id'] = config['checkpoint_ns']
+    print(f"Config recieved inside FastAPI: {config}")
 
 
     from graphs import graph_registry
@@ -119,23 +142,23 @@ async def stream(graph_id: str, request: GraphRequest):
         yield emit_event("Running...", False)
         await asyncio.sleep(0)  # Force flush
 
-        current_node = None
-        
         try:
             # Format input according to the State model structure
             input_state = {
                 "messages": request.messages,
                 "query": request.query
             }
-            
-            for event, data in agent.stream(input=input_state, config=request.config, stream_mode=["messages", "custom", "updates"]):
+
+            current_node = None
+            for event, data in agent.stream(input=input_state, config=config, stream_mode=["messages", "custom", "updates"]):
 
                 if event == "updates":
+                    pass
                     # we will just pretty print the state for debugging
-                    print('$'*30)
-                    print("!!! STATE UPDATE !!!")
-                    print(json.dumps(data, indent=2))
-                    print('$'*30)
+                    # print('$'*30)
+                    # print("!!! STATE UPDATE !!!")
+                    # print(json.dumps(data, indent=2))
+                    # print('$'*30)
 
                 if event == "custom":
                     content_type = data['type']
@@ -145,7 +168,7 @@ async def stream(graph_id: str, request: GraphRequest):
                         yield f"data: {json.dumps(thinking_newline())}\n\n"
                         yield f"data: {json.dumps( thinking_tokens( msg ) )}\n\n"
                     else:
-                        yield f"data: {json.dumps(newlines())}\n\n"
+                        yield f"data: {json.dumps( content_newline())}\n\n"
                         yield f"data: {json.dumps( content_tokens( msg ) )}\n\n"
 
                 if event == "messages":
@@ -161,7 +184,7 @@ async def stream(graph_id: str, request: GraphRequest):
                         await asyncio.sleep(0)  # Force flush
 
                     if hasattr(reply_content, 'content') and reply_content.content:
-                        # print(reply_content.content) #  show tokens as they stream
+                        print(reply_content.content) # show tokens as they stream
 
                         if 'node_output_type' in metadata and metadata['node_output_type'] == NodeOutputType.THOUGHT:
                             content_msg = thinking_tokens(reply_content.content)
@@ -194,7 +217,7 @@ async def stream(graph_id: str, request: GraphRequest):
             # Send the error as a content message to the frontend
             error_content = f"⚠️ Error in graph execution: {error_msg}"
             yield f"data: {json.dumps(content_tokens(error_content))}\n\n"
-            yield f"data: {json.dumps(newlines())}\n\n"
+            yield f"data: {json.dumps(content_newline())}\n\n"
 
             #TODO: ONLY IN DEBUG MODE!!! OTherwise we expose the working code of our app...
             error_content = f"```{stack_trace}```"

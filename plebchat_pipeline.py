@@ -23,7 +23,7 @@ import json
 import uuid
 import requests
 from pydantic import BaseModel, Field
-from typing import List, Union, Generator, Iterator, Literal
+from typing import List, Union, Generator, Iterator, Literal, Optional
 
 
 def error_generator(e, server_url):
@@ -50,31 +50,50 @@ def error_generator(e, server_url):
     yield f"Connection to server failed: `{type(e).__name__}`\n"
     yield f"```\n{str(e)}\n```\n"
     yield f"Please check if the server at {server_url} is running."
+    # End the stream with an error finish reason
+    stream_end = {
+        'choices': [
+            {
+                'delta': {},
+                'finish_reason': 'error'
+            }
+        ]
+    }
+    yield f"data: {json.dumps(stream_end)}\n\n"
 
+
+def generate_title():
+    # yield f"data: rabbit\n\n"
+    yield "Ribbit"
+    #TODO: This doesn't work!!
 
 class Pipeline:
     class Valves(BaseModel):
+        DEBUG: bool = Field(default=True, description='run pipe in debug mode?')
+
         #TODO: how can we dynamically create a Literal type at runtime?  We can populate it with models Ollama has downloaded
         #TODO: The description field doesn't show up in OUI...
-        LLM_MODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
-        KEEP_ALIVE: Literal["-1", "0", "5m"] = Field("5m", description="How long to keep the model in memory")
+        OLLAMA_KEEP_ALIVE: Literal["-1m", "0m", "5m"] = Field("-1m", description="How long to keep the model in memory")
+        OLLAMA_LLM_CHATMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
+        OLLAMA_LLM_TOOLMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
+        OLLAMA_LLM_CODEMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
+        OLLAMA_LLM_SMARTMODEL: Literal[DEFAULT_OLLAMA_MODEL, 'phi4-mini:3.8b-q8_0', 'qwen3:4b-q8_0'] = Field(default=DEFAULT_OLLAMA_MODEL, description="LLM model to use")
 
-        DISABLE_COMMANDS: bool = Field(False, description="Whether to disable commands (i.e. starts with '/')")
         PLEB_SERVER_URL: str = Field(default="http://host.docker.internal:9000", description="PlebChat server URL")
         OLLAMA_BASE_URL: str = Field(default="http://host.docker.internal:11434", description="Ollama server URL")
-        # SEARXNG_URL: str = Field(default="http://searxng:8080", description="SearXNG API URL")
         SEARXNG_URL: str = Field(default="http://host.docker.internal:4001", description="SearXNG API URL")
-        #TODO: change to False in prod
-        DEBUG: bool = Field(default=True, description='run pipe in debug mode?')
+
+        TAVILY_API_KEY: str = Field(default="NOT_SET", description="Tavily API key")
 
 
     def __init__(self):
         self.type = "manifold"
-        # This is prefixed onto each of the manifold agent names
-        #NOTE: if the pipeline models are edited in OUI and their pipeline name changes.. it doesn't update.  This is a bug of OUI
-        self.name = "PlebChat: "
-        # self.name = "🗣️🤖💬 - "
-        self.chat_id = None
+        self.name = "PlebChat: " # This is prefixed onto each of the manifold agent names
+        #NOTE: if the pipeline models are edited in OUI and their pipeline name changes.. it doesn't update.  This is a bug/issue of OUI
+
+        #NOTE: we will define our own variables (outside of `body`, `message`, etc) that will persist along the lifespan of the call
+        self.metadata = None
+        self.thread_id = None
 
         self.valves = self.Valves()
         self.set_pipelines()
@@ -92,15 +111,19 @@ class Pipeline:
         self.set_pipelines()
         pass
 
-    # async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
-    #     # if self.valves.debug:
-    #     #     print(f"[DEBUG] Received request: {json.dumps(body, indent=2)}")
+    async def inlet(self, body: dict, user: Optional[dict] = None) -> dict:
+        if self.valves.DEBUG:
+            print(f"[PIPELINE INLET] body: {json.dumps(body, indent=2)}")
+            print(f"[PIPELINE INLET] user: {json.dumps(user, indent=2)}")
 
-    #     metadata = body.get("metadata", {})
-    #     chat_id = metadata.get("chat_id", str(uuid.uuid4()))
-    #     metadata["chat_id"] = chat_id
-    #     body["metadata"] = metadata
-    #     return body
+        metadata = body.get("metadata", {})
+        self.metadata = metadata
+        self.thread_id = metadata.get("chat_id", str(uuid.uuid4()))
+
+        # not sure what these do... they don't seem to "stick"
+        # metadata["chat_id"] = chat_id
+        # body["metadata"] = metadata
+        return body
 
     def set_pipelines(self):
         #TODO: This fails (and ultimately the pipeline cannot be loaded into OUI) if the fkn server isn't running!! THAT SUCKS!
@@ -126,9 +149,23 @@ class Pipeline:
         self, 
         user_message: str, 
         model_id: str, 
-        messages: List[dict], 
+        messages: List[dict],
         body: dict
+        # __metadata__: Optional[dict] = None
             ) -> Union[str, Generator, Iterator]:
+
+        # if body.get("metadata", None):
+        #     __metadata__ = body.get("metadata", None)
+
+        # if __metadata__:
+        print("asdf"*12)
+        print(self.metadata.get('task', None))
+        if self.metadata.get('task', None) == 'title_generation':
+            print("TITLE GEN TITLE GEN -----------------------------------------")
+            return generate_title()
+        # TODO: also do this for tag generation
+
+
 
         # print("*"*30)
         # print(f"chat_id: {self.chat_id}")
@@ -139,19 +176,35 @@ class Pipeline:
         # print("*"*30)
         # print(model_id)
         print("*"*30)
-        print(body)
-        print("*"*30)
-        print("MESSAGES")
-        print(json.dumps(messages, indent=2))
-        print("*"*30)
-
-        valve_config = self.valves.model_dump()
+        print("__metadata__")
+        print(json.dumps(self.metadata, indent=2))
+        # print("*"*30)
+        # print("MESSAGES")
+        # print(json.dumps(messages, indent=2))
+        # print("*"*30)
+        # print(body)
+        # print("*"*30)
+        # print("thread_id:")
+        # print(self.thread_id)
+        # print("*"*30)
+        # print("metadata:")
+        # print(json.dumps(self.metadata, indent=2))
+        # print("*"*30)
 
         data = {
             "query": user_message,  # Include the original user query
             "messages": messages,
-            "config": valve_config  # Include all valve settings as config
-            }
+            "config": self.valves.model_dump()  # Include all valve settings as config
+        }
+        # TODO: https://openwebui.com/f/codysandahl/pipeline_enriched_with_metadata
+        data["metadata"] = self.metadata
+
+        data['config']['thread_id'] = self.thread_id
+        data['config']['message_id'] = self.metadata.get('message_id', None)
+        print("*"*30)
+        print("THIS IS THE FINAL VERSION OF THE DATA PAYLOAD THAT WILL BE SENT")
+        print(json.dumps(data, indent=2))
+        print("*"*30)
 
         headers = {
             'accept': 'text/event-stream',
@@ -159,17 +212,15 @@ class Pipeline:
         }
 
         try:
-            #TODO: pass in valves as "config"
             response = requests.post(
                 self.valves.PLEB_SERVER_URL + f"/graph/{model_id}",
                 json=data,
                 headers=headers,
                 stream=True,
-                timeout=10.0  # 5 seconds timeout for connection attempt
+                timeout=13.0
             )
             response.raise_for_status()
             return response.iter_lines()
-
 
         except Exception as e:
             print(f"ERROR: pipeline connection failed: {str(e)}")
